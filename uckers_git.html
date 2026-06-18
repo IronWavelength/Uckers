@@ -1,0 +1,2454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uckers — Mess Deck Edition</title>
+<style>
+:root{
+  --navy:#0d1b2a;--navy-m:#1a2e45;
+  --wood:#3d2408;--wood-l:#5c3810;
+  --brass:#c8a035;--brass-l:#e8c060;--brass-d:#6a5010;
+  --parch:#e8dcc0;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--navy);font-family:'Courier New',monospace;color:var(--parch);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:14px;user-select:none;}
+h1{font-family:Georgia,serif;font-size:2.1rem;font-weight:900;color:var(--brass-l);letter-spacing:.07em;text-shadow:0 2px 10px #c8a03440;}
+.sub{font-size:.6rem;color:var(--brass-d);letter-spacing:.2em;text-transform:uppercase;margin-top:1px;margin-bottom:12px;}
+.layout{display:flex;gap:14px;align-items:flex-start;max-width:1400px;width:100%;}
+.panel{width:200px;flex-shrink:0;display:flex;flex-direction:column;gap:9px;}
+.card{background:var(--navy-m);border:1px solid var(--brass-d);border-radius:4px;padding:11px;}
+.card h3{font-size:.58rem;letter-spacing:.22em;color:var(--brass);text-transform:uppercase;border-bottom:1px solid var(--brass-d);padding-bottom:6px;margin-bottom:8px;}
+
+/* ═══ 3D DICE ═══ */
+.da{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.dice-pair{display:flex;gap:24px;justify-content:center;}
+.die-scene{width:60px;height:60px;perspective:220px;flex-shrink:0;}
+.die-wrap{
+  width:60px;height:60px;
+  position:relative;
+  transform-style:preserve-3d;
+  transition:transform 0.65s cubic-bezier(0.2,0.8,0.3,1);
+}
+@keyframes dieRoll{
+  0%  {transform:rotateX(0deg)   rotateY(0deg)   rotateZ(0deg)   scale(1);}
+  15% {transform:rotateX(90deg)  rotateY(120deg) rotateZ(45deg)  scale(1.1);}
+  40% {transform:rotateX(270deg) rotateY(300deg) rotateZ(180deg) scale(1.08);}
+  70% {transform:rotateX(450deg) rotateY(540deg) rotateZ(270deg) scale(1.03);}
+  100%{transform:rotateX(360deg) rotateY(360deg) rotateZ(360deg) scale(1);}
+}
+.die-wrap.rolling{animation:dieRoll 0.65s cubic-bezier(0.15,0.8,0.25,1);}
+.draft-die-wrap.rolling{animation:dieRoll 0.6s cubic-bezier(0.15,0.8,0.25,1);}
+.die-face{
+  position:absolute;width:60px;height:60px;
+  border-radius:10px;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  padding:7px;gap:3px;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+/* Front/back faces */
+.die-face.f1{
+  background:linear-gradient(135deg,#fdf6e0 0%,#e8d898 100%);
+  border:2px solid #c8a030;
+  box-shadow:inset 0 1px 4px #ffffff90,inset 0 -2px 5px #00000025;
+  transform:translateZ(30px);
+}
+.die-face.f6{
+  background:linear-gradient(135deg,#d8c878,#b8a050);
+  border:2px solid #a08020;
+  transform:rotateY(180deg) translateZ(30px);
+}
+/* Side faces */
+.die-face.f2{
+  background:linear-gradient(135deg,#e8d890,#c8b860);
+  border:2px solid #b09030;
+  transform:rotateY(-90deg) translateZ(30px);
+}
+.die-face.f5{
+  background:linear-gradient(135deg,#e0d080,#c0a848);
+  border:2px solid #a89020;
+  transform:rotateY(90deg) translateZ(30px);
+}
+/* Top/bottom faces */
+.die-face.f3{
+  background:linear-gradient(135deg,#dcc870,#bc9840);
+  border:2px solid #a08820;
+  transform:rotateX(90deg) translateZ(30px);
+}
+.die-face.f4{
+  background:linear-gradient(135deg,#d0bc60,#b09030);
+  border:2px solid #988018;
+  transform:rotateX(-90deg) translateZ(30px);
+}
+.dp{width:100%;height:100%;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#3a2060,#0d0820);
+  box-shadow:0 1px 2px #00000060,inset 0 -1px 2px rgba(255,255,255,.12);
+  visibility:hidden;}
+.dp.on{visibility:visible;}
+.dice-sum{font-size:1rem;font-weight:600;color:var(--brass-l);text-align:center;min-height:1.3rem;}
+.rbtn{background:linear-gradient(180deg,var(--brass-l),var(--brass));color:var(--navy);border:none;border-radius:3px;
+  padding:9px 0;font-family:'Courier New',monospace;font-size:.68rem;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;cursor:pointer;width:100%;transition:all .15s;
+  box-shadow:0 3px 0 var(--brass-d),0 4px 6px #00000040;}
+.rbtn:hover{background:linear-gradient(180deg,#f0d070,var(--brass-l));transform:translateY(-1px);box-shadow:0 4px 0 var(--brass-d),0 6px 8px #00000050;}
+.rbtn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--brass-d);}
+.rbtn:disabled{background:#3a3a3a;color:#666;cursor:not-allowed;transform:none;box-shadow:none;}
+.chal-btn{background:linear-gradient(180deg,#a03020,#7a2000);color:#fff;border:none;border-radius:3px;
+  padding:7px;font-family:'Courier New',monospace;font-size:.62rem;cursor:pointer;letter-spacing:.09em;
+  text-transform:uppercase;width:100%;margin-top:4px;transition:all .15s;
+  box-shadow:0 3px 0 #4a1000,0 4px 6px #00000040;}
+.chal-btn:hover{background:linear-gradient(180deg,#c04030,#a03000);transform:translateY(-1px);}
+.chal-btn:disabled{background:#333;color:#666;cursor:not-allowed;box-shadow:none;}
+
+/* Players / panels */
+.pr{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid #ffffff0d;opacity:.4;transition:opacity .3s;}
+.pr:last-child{border-bottom:none;}
+.pr.on{opacity:1;}.pr.on .pn{color:var(--brass-l);}
+.pd{width:12px;height:12px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.15);}
+.pn{font-size:.64rem;flex:1;}.ps{font-size:.62rem;color:var(--brass);}
+.team-badge{font-size:.52rem;padding:1px 4px;border-radius:2px;margin-left:2px;}
+.tc{padding:9px;border-radius:4px;text-align:center;border:1px solid;transition:background .35s,border-color .35s;}
+.tw{font-size:.58rem;letter-spacing:.17em;text-transform:uppercase;opacity:.7;}
+.ta{font-family:Georgia,serif;font-size:.9rem;font-weight:700;margin-top:2px;}
+.tracker{display:flex;justify-content:space-between;gap:6px;margin-top:6px;}
+.trk{flex:1;text-align:center;background:#0d1520;border:1px solid #ffffff15;border-radius:3px;padding:4px 2px;}
+.trk-label{font-size:.5rem;letter-spacing:.1em;color:#666;text-transform:uppercase;}
+.trk-val{font-size:.85rem;font-weight:600;color:var(--brass);}
+.trk-val.warn{color:#e74c3c;}
+.lb{font-size:.59rem;line-height:1.75;max-height:160px;overflow-y:auto;color:#999;}
+.lb::-webkit-scrollbar{width:3px;}
+.lb::-webkit-scrollbar-thumb{background:var(--brass-d);border-radius:2px;}
+.le{padding:1px 0;}.le.hi{color:var(--brass-l);}.le.kl{color:#e74c3c;}.le.wn{color:#2ecc71;}.le.pu{color:#e67e22;}
+.rl{font-size:.6rem;line-height:1.8;color:#aaa;list-style:none;}
+.rl li::before{content:"▸ ";color:var(--brass-d);}
+.bw{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;}
+.bo{background:var(--wood);padding:14px;border-radius:7px;
+  box-shadow:0 12px 40px #00000090,0 4px 12px #00000060,inset 0 1px 0 #c8a03518;
+  border:2px solid var(--wood-l);position:relative;
+  width:min(calc(100vw - 280px), 750px);box-sizing:border-box;}
+.bo::before{content:'';position:absolute;inset:6px;border:1px solid var(--brass-d);border-radius:3px;pointer-events:none;}
+.ht{font-size:.57rem;color:var(--brass-d);letter-spacing:.09em;text-align:center;}
+.cb{width:100%;background:transparent;border:1px solid var(--brass-d);color:var(--parch);border-radius:3px;
+  padding:7px;font-family:'Courier New',monospace;font-size:.62rem;cursor:pointer;letter-spacing:.09em;
+  text-transform:uppercase;transition:border-color .15s;}
+.cb:hover{border-color:var(--brass);}
+
+/* OVERLAYS */
+.overlay{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:100;overflow-y:auto;}
+.overlay.hidden{display:none;}
+.sc{background:var(--navy-m);border:1px solid var(--brass-d);border-radius:6px;padding:28px 34px;max-width:480px;width:93%;text-align:center;margin:auto;}
+.st{font-family:Georgia,serif;font-size:2.2rem;font-weight:900;color:var(--brass-l);}
+.ss{font-size:.6rem;color:var(--brass-d);letter-spacing:.17em;text-transform:uppercase;margin-bottom:20px;}
+.sl{font-size:.62rem;letter-spacing:.13em;color:var(--brass);text-transform:uppercase;text-align:left;margin-bottom:7px;}
+.bg{display:flex;gap:7px;margin-bottom:16px;}
+.ob{flex:1;padding:10px 5px;background:var(--navy);border:1px solid var(--brass-d);border-radius:3px;color:var(--parch);font-family:'Courier New',monospace;font-size:.72rem;cursor:pointer;transition:all .15s;line-height:1.4;}
+.ob:hover{border-color:var(--brass);}
+.ob.s{background:var(--brass);color:var(--navy);border-color:var(--brass);font-weight:600;}
+.nr{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.nrow{display:flex;align-items:center;gap:8px;}
+.nd{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.ni{flex:1;background:var(--navy);border:1px solid var(--brass-d);border-radius:3px;padding:6px 9px;color:var(--parch);font-family:'Courier New',monospace;font-size:.72rem;outline:none;transition:border-color .15s;}
+.ni:focus{border-color:var(--brass);}
+.stbtn{background:linear-gradient(180deg,var(--brass-l),var(--brass));color:var(--navy);border:none;border-radius:4px;
+  padding:12px;font-family:'Courier New',monospace;font-size:.75rem;font-weight:600;letter-spacing:.13em;
+  text-transform:uppercase;cursor:pointer;width:100%;transition:all .15s;margin-top:4px;
+  box-shadow:0 3px 0 var(--brass-d);}
+.stbtn:hover{background:linear-gradient(180deg,#f0d070,var(--brass-l));transform:translateY(-1px);}
+
+/* Draft dice */
+.draft-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.draft-player{background:var(--navy);border:1px solid var(--brass-d);border-radius:4px;padding:12px;text-align:center;}
+.draft-player.rolling{border-color:var(--brass);}
+.dp-name{font-size:.68rem;color:var(--parch);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.draft-die-scene{width:46px;height:46px;perspective:180px;margin:0 auto 8px;}
+.draft-die-wrap{width:46px;height:46px;position:relative;transform-style:preserve-3d;transition:transform 0.6s cubic-bezier(0.2,0.8,0.3,1);}
+.draft-die-face{position:absolute;width:46px;height:46px;border-radius:7px;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  padding:5px;gap:2px;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+.draft-die-face.f1{background:linear-gradient(135deg,#fdf6e0,#e8d898);border:1.5px solid #c8a030;transform:translateZ(23px);}
+.draft-die-face.f6{background:linear-gradient(135deg,#d8c878,#b8a050);border:1.5px solid #a08020;transform:rotateY(180deg) translateZ(23px);}
+.draft-die-face.f2{background:linear-gradient(135deg,#e8d890,#c8b860);border:1.5px solid #b09030;transform:rotateY(-90deg) translateZ(23px);}
+.draft-die-face.f5{background:linear-gradient(135deg,#e0d080,#c0a848);border:1.5px solid #a89020;transform:rotateY(90deg) translateZ(23px);}
+.draft-die-face.f3{background:linear-gradient(135deg,#dcc870,#bc9840);border:1.5px solid #a08820;transform:rotateX(90deg) translateZ(23px);}
+.draft-die-face.f4{background:linear-gradient(135deg,#d0bc60,#b09030);border:1.5px solid #988018;transform:rotateX(-90deg) translateZ(23px);}
+.dp-result{font-size:.62rem;color:var(--brass);}
+.dp-btn{background:var(--brass-d);color:var(--parch);border:none;border-radius:3px;padding:5px 10px;font-family:'Courier New',monospace;font-size:.6rem;cursor:pointer;letter-spacing:.08em;margin-top:4px;}
+.dp-btn:hover{background:var(--brass);}
+.dp-btn:disabled{background:#222;color:#444;cursor:not-allowed;}
+
+/* Pick */
+.pick-instruction{font-size:.7rem;color:var(--parch);margin-bottom:16px;line-height:1.6;}
+.pieces-grid{display:flex;gap:12px;justify-content:center;margin-bottom:20px;flex-wrap:wrap;}
+.piece{width:70px;height:70px;border-radius:6px;cursor:pointer;border:3px solid transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px #00000050;}
+.piece.face-down{background:#2a3a4a;border-color:#3a4a5a;}
+.piece.face-down:hover{border-color:var(--brass);transform:scale(1.05);}
+.piece.revealed{cursor:default;}
+.piece.taken{opacity:.35;cursor:not-allowed;}
+
+/* Win */
+#ws{display:none;position:fixed;inset:0;background:#000000b0;z-index:200;align-items:center;justify-content:center;}
+#ws.show{display:flex;}
+.wc{background:var(--navy-m);border:2px solid var(--brass);border-radius:8px;padding:36px;text-align:center;box-shadow:0 20px 70px #00000090;max-width:400px;}
+.wt{font-family:Georgia,serif;font-size:1.8rem;color:var(--brass-l);margin-bottom:4px;}
+.wteam{font-family:Georgia,serif;font-size:2.6rem;font-weight:900;margin-bottom:6px;}
+.wb{font-size:.62rem;letter-spacing:.15em;color:var(--brass-d);text-transform:uppercase;margin-bottom:6px;}
+.wplayers{font-size:.72rem;color:#aaa;margin-bottom:20px;}
+.wa{background:var(--brass);color:var(--navy);border:none;border-radius:4px;padding:10px 28px;font-family:'Courier New',monospace;font-size:.72rem;font-weight:600;letter-spacing:.13em;text-transform:uppercase;cursor:pointer;}
+.wa:hover{background:var(--brass-l);}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="ov-names">
+<div class="sc">
+  <div class="st">UCKERS</div>
+  <div class="ss">Mess Deck Edition · RAN Rules</div>
+  <div class="sl">Player Names</div>
+  <div class="nr" id="namerows"></div>
+  <div class="sl">Computer Players</div>
+  <div class="bg" id="cpug"></div>
+  <button class="stbtn" onclick="startDraft()">PROCEED TO DRAFT</button>
+</div>
+</div>
+
+<div class="overlay hidden" id="ov-draft">
+<div class="sc">
+  <div class="st" style="font-size:1.9rem;">COLOUR DRAFT</div>
+  <div class="ss">Roll to determine pick order · Highest picks first</div>
+  <div class="draft-grid" id="draft-grid"></div>
+  <div id="draft-status" style="font-size:.68rem;color:var(--brass);margin-bottom:12px;min-height:1rem;"></div>
+  <button class="stbtn" id="draft-proceed" style="display:none;" onclick="startPickPhase()">PROCEED TO COLOUR PICK</button>
+</div>
+</div>
+
+<div class="overlay hidden" id="ov-pick">
+<div class="sc">
+  <div class="st" style="font-size:1.9rem;">PICK YOUR COLOUR</div>
+  <div class="ss">Face-down · Pick in draft order</div>
+  <div class="pick-instruction" id="pick-instr"></div>
+  <div class="pieces-grid" id="pieces-grid"></div>
+  <div id="pick-status" style="font-size:.65rem;color:#888;"></div>
+</div>
+</div>
+
+<div id="ws">
+<div class="wc">
+  <div class="wt">Victory to the</div>
+  <div class="wteam" id="wteam"></div>
+  <div class="wb">team</div>
+  <div class="wplayers" id="wplayers"></div>
+  <button class="wa" onclick="doReset()">Play Again</button>
+</div>
+</div>
+
+<h1>UCKERS</h1>
+<div class="sub">Mess Deck Edition · Royal Australian Navy</div>
+
+<div class="layout">
+<div class="panel">
+  <div class="card"><h3>Players &amp; Teams</h3><div id="plist"></div></div>
+  <div class="card tc" id="tc">
+    <h3 style="border-bottom:none;margin-bottom:0;padding-bottom:0;">Turn</h3>
+    <div class="tw" id="tw">—</div><div class="ta" id="ta">—</div>
+    <div class="tracker">
+      <div class="trk"><div class="trk-label">Doubles</div><div class="trk-val" id="trk-dbl">0</div></div>
+      <div class="trk"><div class="trk-label">Sixes</div><div class="trk-val" id="trk-six">0</div></div>
+    </div>
+  </div>
+  <div class="card"><h3>Dice</h3>
+    <div class="da">
+      <div class="dice-pair">
+        <div class="die-scene">
+          <div class="die-wrap" id="die1">
+            <div class="die-face f1">
+              <div class="dp" id="d1p0"></div><div class="dp" id="d1p1"></div><div class="dp" id="d1p2"></div>
+              <div class="dp" id="d1p3"></div><div class="dp" id="d1p4"></div><div class="dp" id="d1p5"></div>
+              <div class="dp" id="d1p6"></div><div class="dp" id="d1p7"></div><div class="dp" id="d1p8"></div>
+            </div>
+            <div class="die-face f6">
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+            </div>
+            <div class="die-face f2">
+              <div class="dp on"></div><div class="dp"></div><div class="dp"></div>
+              <div class="dp"></div><div class="dp"></div><div class="dp"></div>
+              <div class="dp"></div><div class="dp"></div><div class="dp on"></div>
+            </div>
+            <div class="die-face f5">
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+              <div class="dp"></div><div class="dp on"></div><div class="dp"></div>
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+            </div>
+            <div class="die-face f3">
+              <div class="dp on"></div><div class="dp"></div><div class="dp"></div>
+              <div class="dp"></div><div class="dp on"></div><div class="dp"></div>
+              <div class="dp"></div><div class="dp"></div><div class="dp on"></div>
+            </div>
+            <div class="die-face f4">
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+              <div class="dp"></div><div class="dp"></div><div class="dp"></div>
+            </div>
+          </div>
+        </div>
+        <div class="die-scene">
+          <div class="die-wrap" id="die2">
+            <div class="die-face f1">
+              <div class="dp" id="d2p0"></div><div class="dp" id="d2p1"></div><div class="dp" id="d2p2"></div>
+              <div class="dp" id="d2p3"></div><div class="dp" id="d2p4"></div><div class="dp" id="d2p5"></div>
+              <div class="dp" id="d2p6"></div><div class="dp" id="d2p7"></div><div class="dp" id="d2p8"></div>
+            </div>
+            <div class="die-face f6">
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+            </div>
+            <div class="die-face f2">
+              <div class="dp on"></div><div class="dp"></div><div class="dp"></div>
+              <div class="dp"></div><div class="dp"></div><div class="dp"></div>
+              <div class="dp"></div><div class="dp"></div><div class="dp on"></div>
+            </div>
+            <div class="die-face f5">
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+              <div class="dp"></div><div class="dp on"></div><div class="dp"></div>
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+            </div>
+            <div class="die-face f3">
+              <div class="dp on"></div><div class="dp"></div><div class="dp"></div>
+              <div class="dp"></div><div class="dp on"></div><div class="dp"></div>
+              <div class="dp"></div><div class="dp"></div><div class="dp on"></div>
+            </div>
+            <div class="die-face f4">
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+              <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+              <div class="dp"></div><div class="dp"></div><div class="dp"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dice-sum" id="dice-sum"></div>
+      <button class="rbtn" id="rbtn" onclick="onRoll()">ROLL DICE</button>
+      <button class="chal-btn" id="chal-btn" onclick="onChallenge()" style="display:none;">CHALLENGE TOWER</button>
+    </div>
+  </div>
+  <div class="card"><h3>Game Log</h3><div class="lb" id="gl"></div></div>
+</div>
+
+<div class="bw">
+  <div class="bo"><svg id="svg" viewBox="0 0 510 510" style="width:100%;height:auto;display:block;"></svg></div>
+  <div class="ht" id="hint-txt">Roll a 6 to exit · Click piece to select · Click highlighted square to move</div>
+</div>
+
+<div class="panel">
+  <div class="card"><h3>RAN Rules</h3>
+    <ul class="rl">
+      <li>Two dice every roll</li>
+      <li>A 6 exits one piece (uses that die)</li>
+      <li>Double 6 = two pieces exit</li>
+      <li>Double-N on Nth turn = all out</li>
+      <li>Doubles = roll again</li>
+      <li>Tower of 2 + doubles = uck enemy tower of 2</li>
+      <li>Tower N+1 passes tower N</li>
+      <li>Mixed tower = weak</li>
+      <li>3 doubles = sent off</li>
+      <li>5 sixes = sent off</li>
+      <li>Teams: Green+Blue vs Red+Yellow</li>
+    </ul>
+  </div>
+  <div class="card"><h3>Legend</h3>
+    <div style="font-size:.61rem;line-height:2;color:#aaa;">
+      <div><span style="color:#2ecc71;">●</span> Green &nbsp;<span style="color:#e74c3c;">●</span> Red</div>
+      <div><span style="color:#3498db;">●</span> Blue &nbsp;<span style="color:#f1c40f;">●</span> Yellow</div>
+      <div style="margin-top:3px;font-size:.57rem;color:#555;">Pulsing = movable · Number = tower height</div>
+    </div>
+  </div>
+  <div class="card"><h3>Status</h3><div id="cpu" style="font-size:.61rem;color:#777;">—</div></div>
+  <div class="card"><h3>Controls</h3><button class="cb" onclick="doReset()">New Game</button></div>
+</div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════
+//  UCKERS — RAN Edition · 3D Dice + 3D Pieces
+//  Board geometry: FIXED cross cols 6-8, rows 6-8
+// ═══════════════════════════════════════════════
+
+const G=34, N=15, SZ=510;
+const COLORS=['green','red','blue','yellow'];
+const HEX  ={green:'#0a3d16',red:'#8b1e14',blue:'#0d3558',yellow:'#7a5000'};
+const LITE  ={green:'#2ecc71',red:'#e74c3c',blue:'#3498db',yellow:'#f1c40f'};
+const MID   ={green:'#1e8039',red:'#c0392b',blue:'#1a6298',yellow:'#c89020'};
+const TEAM  ={green:'A',red:'B',blue:'A',yellow:'B'};
+const TEAM_COLORS={A:['green','blue'],B:['red','yellow']};
+const TEAM_NAME={A:'Green & Blue',B:'Red & Yellow'};
+
+// Dice show result on f1 (front face), CSS animation returns to identity
+// Pip positions for front face (f1), indexed 0-8 (tl,tc,tr,ml,mc,mr,bl,bc,br)
+const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+
+// Cumulative die rotations (never reset, always accumulate)
+// dice use CSS keyframe animation, no state needed
+
+// ── BOARD GEOMETRY ──
+// Cross arm spans: vertical cols 6-8, horizontal rows 6-8
+// Track: outer cols (6 & 8) of vertical arm, outer rows (6 & 8) of horizontal arm
+// Home: middle col 7 (vertical), middle row 7 (horizontal)
+const TRACK=(()=>{
+  const t=[];
+  for(let r=0;r<=6;r++) t.push({col:8,row:r});    // 0-6:  top-arm right col ↓
+  for(let c=9;c<=14;c++) t.push({col:c,row:6});   // 7-12: right-arm top row →
+  for(let c=14;c>=8;c--) t.push({col:c,row:8});   // 13-19: right-arm bottom row ←
+  for(let r=9;r<=14;r++) t.push({col:8,row:r});   // 20-25: bottom-arm right col ↓
+  for(let r=14;r>=8;r--) t.push({col:6,row:r});   // 26-32: bottom-arm left col ↑
+  for(let c=5;c>=0;c--) t.push({col:c,row:8});    // 33-38: left-arm bottom row ←
+  for(let c=0;c<=6;c++) t.push({col:c,row:6});    // 39-45: left-arm top row →
+  for(let r=5;r>=0;r--) t.push({col:6,row:r});    // 46-51: top-arm left col ↑
+  return t;
+})();
+const NS=52;
+
+const ENTRY={green:1,red:14,blue:27,yellow:40};
+const HTURN={green:51,red:12,blue:25,yellow:38};
+
+// Home column squares (hp=0 nearest track, hp=5 nearest centre)
+const HCOL={
+  green: [{col:7,row:1},{col:7,row:2},{col:7,row:3},{col:7,row:4},{col:7,row:5},{col:7,row:6}],
+  red:   [{col:13,row:7},{col:12,row:7},{col:11,row:7},{col:10,row:7},{col:9,row:7},{col:8,row:7}],
+  blue:  [{col:7,row:13},{col:7,row:12},{col:7,row:11},{col:7,row:10},{col:7,row:9},{col:7,row:8}],
+  yellow:[{col:1,row:7},{col:2,row:7},{col:3,row:7},{col:4,row:7},{col:5,row:7},{col:6,row:7}],
+};
+
+// Base token positions (floating in corner areas, off the cross)
+const BASE={
+  green: [{col:11,row:2},{col:12,row:2},{col:11,row:3},{col:12,row:3}],
+  red:   [{col:11,row:11},{col:12,row:11},{col:11,row:12},{col:12,row:12}],
+  blue:  [{col:2,row:11},{col:3,row:11},{col:2,row:12},{col:3,row:12}],
+  yellow:[{col:2,row:2},{col:3,row:2},{col:2,row:3},{col:3,row:3}],
+};
+
+// ── SETUP STATE ──
+let CFG={names:['Sailor 1','Sailor 2','Sailor 3','Sailor 4'],
+         cpu:[false,false,true,true],
+         seatColor:['green','red','blue','yellow']};
+let DRAFT={rolls:[null,null,null,null],order:[],pickQueue:[],picked:[],
+           available:['green','red','blue','yellow'],_shuffled:[]};
+// draftDieRot removed
+
+// ── GAME STATE ──
+let GS=null;
+function newTok(color,slot){return{color,slot,pos:'base',sq:0,hp:-1};}
+function initGame(){
+  const toks={};
+  COLORS.forEach(c=>{toks[c]=[0,1,2,3].map(s=>newTok(c,s));});
+  const turnOrder=CFG.seatColor.slice();
+  return{
+    toks,turnOrder,
+    names:Object.fromEntries(COLORS.map(c=>{const s=CFG.seatColor.indexOf(c);return[c,s>=0?CFG.names[s]:c];})),
+    cpu:Object.fromEntries(COLORS.map(c=>{const s=CFG.seatColor.indexOf(c);return[c,s>=0?!!CFG.cpu[s]:false];})),
+    cur:turnOrder[0],d1:null,d2:null,
+    phase:'roll',sel:null,dblCount:0,sixCount:0,
+    playerTurns:Object.fromEntries(COLORS.map(c=>[c,0])),
+    // playerExited: once ANY piece leaves base, double-N all-out is permanently disabled
+    playerExited:Object.fromEntries(COLORS.map(c=>[c,false])),
+    actions:[],challenge:null,log:[],winner:null,winTeam:null,_isDoubles:false,_assistMode:false,_animating:false,
+  };
+}
+
+// ── BOARD QUERIES ──
+function stepsFn(c,sq){return(sq-ENTRY[c]+NS)%NS;}
+function stepsToTurn(c){return(HTURN[c]-ENTRY[c]+NS)%NS;}
+function onTrack(sq){const res=[];COLORS.forEach(c=>GS.toks[c].forEach(t=>{if(t.pos==='track'&&t.sq===sq)res.push(t);}));return res;}
+function towerInfo(sq){const th=onTrack(sq);if(th.length===0)return{height:0,color:null,isMixed:false};const colors=new Set(th.map(t=>t.color));if(colors.size>1)return{height:th.length,color:null,isMixed:true};return{height:th.length,color:th[0].color,isMixed:false};}
+function pathClear(color,fromSq,dv){for(let step=1;step<dv;step++){const checkSq=(fromSq+step)%NS;const info=towerInfo(checkSq);if(info.height>=2&&info.color&&info.color!==color&&!info.isMixed)return false;}return true;}
+function canLandSingle(color,destSq){
+  const info=towerInfo(destSq);
+  if(info.height===0) return true;
+  if(info.color===color) return true;  // own pieces — join tower
+  if(TEAM[info.color]===TEAM[color]) return true;  // teammate — join, not uck
+  if(info.isMixed) return true;  // mixed tower — can uck enemies
+  if(info.height>=2) return false;  // enemy tower of 2+ — blocked
+  return true;  // single enemy — can uck
+}
+function canTowerLand(color,myHeight,destSq,isDoubles){const info=towerInfo(destSq);if(info.height===0)return{can:true};if(info.color===color)return{can:true};if(info.isMixed)return{can:true};if(info.height>=2){if(info.height===2&&myHeight>=2&&isDoubles)return{can:true,uck:true};if(myHeight===info.height+1)return{can:true,pass:true};return{can:false};}return{can:true};}
+function myTowerAt(sq,color){return GS.toks[color].filter(t=>t.pos==='track'&&t.sq===sq).slice(0,2);}
+
+// ── MOVE VALIDATION ──
+function canDoAction(tok,action){
+  if(tok.pos==='done')return false;
+  const c=tok.color;
+  if(action.type==='exit'){
+    if(tok.pos!=='base')return false;
+    const info=towerInfo(ENTRY[c]);
+    if(info.color&&info.color!==c&&!info.isMixed&&info.height>=3)return false;
+    return true;
+  }
+  if(action.type==='six_n'){
+    // Can use on base piece (exit) or board piece (move 6)
+    if(tok.pos==='base'){
+      const info=towerInfo(ENTRY[c]);
+      if(info.color&&info.color!==c&&!info.isMixed&&info.height>=3)return false;
+      return true;
+    }
+    return canDoAction(tok,{type:'move',dv:6});
+  }
+  if(action.type==='six_choice'){
+    if(tok.pos==='base'){
+      const info=towerInfo(ENTRY[c]);
+      if(info.color&&info.color!==c&&!info.isMixed&&info.height>=3)return false;
+      return true;
+    }
+    return canDoAction(tok,{type:'move',dv:6});
+  }
+  if(action.type==='move'){
+    if(tok._uckedThisTurn) return false; // can't move again after ucking this turn
+    const dv=action.dv;
+    if(tok.pos==='home')return dv<=(5-tok.hp);
+    if(tok.pos!=='track')return false;
+    const s=stepsFn(c,tok.sq),stt=stepsToTurn(c);
+    if(s+dv<=stt){if(!pathClear(c,tok.sq,dv))return false;return canLandSingle(c,(tok.sq+dv)%NS);}
+    return(s+dv-stt-1)<=5;
+  }
+  if(action.type==='move_tower'){
+    if(!action.isDoubles)return false;
+    if(tok.pos!=='track')return false;
+    const myTower=myTowerAt(tok.sq,c);
+    if(myTower.length<2)return false;
+    const s=stepsFn(c,tok.sq),stt=stepsToTurn(c);
+    if(s+action.dv>stt){const hp=s+action.dv-stt-1;return hp>=0&&hp<=5;}
+    return canTowerLand(c,myTower.length,(tok.sq+action.dv)%NS,true).can;
+  }
+  return false;
+}
+function movableForAction(color,action){
+  return GS.toks[color].filter(t=>canDoAction(t,action));
+}
+
+// ── ACTIONS ──
+function buildActions(v1,v2,color,oneDie){
+  const actions=[];
+  const hasBase=GS.toks[color].some(t=>t.pos==='base');
+  const isDoubles=!oneDie&&v1===v2;
+
+  if(oneDie){
+    if(v1===6&&hasBase) actions.push({type:'six_n',dv:6});
+    else actions.push({type:'move',dv:v1});
+    return actions;
+  }
+
+  const six1=v1===6, six2=v2===6;
+
+  // Double 6
+  if(six1&&six2){
+    const baseCount=GS.toks[color].filter(t=>t.pos==='base').length;
+    if(baseCount===0){
+      actions.push({type:'move',dv:6,isDoubles:true,paired:true,pairVal:6});
+      actions.push({type:'move',dv:6,isDoubles:true,paired:true,pairVal:6});
+    }else if(baseCount===1){
+      actions.push({type:'six_choice',dv:6,baseCount:1});
+    }else{
+      actions.push({type:'six_choice',dv:6,baseCount});
+    }
+    return actions;
+  }
+
+  // Single 6 with piece in base:
+  // Model as TWO independent dice:
+  //   six_n = the 6 die: exit a base piece OR move any board piece 6
+  //   move N = the other die: move any piece N (completely independent)
+  if(six1&&hasBase){
+    actions.push({type:'six_n',dv:6});
+    actions.push({type:'move',dv:v2,paired:true,pairVal:6,isDoubles});
+    return actions;
+  }
+  if(six2&&hasBase){
+    actions.push({type:'six_n',dv:6});
+    actions.push({type:'move',dv:v1,paired:true,pairVal:6,isDoubles});
+    return actions;
+  }
+
+  // No 6 or no pieces in base — two individual die moves
+  actions.push({type:'move',dv:v1,paired:true,pairVal:v2,isDoubles});
+  actions.push({type:'move',dv:v2,paired:true,pairVal:v1,isDoubles});
+  return actions;
+}
+
+// ── EXECUTE ──
+function doExitTok(tok){
+  const c=tok.color,nm=GS.names[c],esq=ENTRY[c];
+  const others=onTrack(esq).filter(t=>t.color!==c);
+  const enemies=others.filter(t=>TEAM[t.color]!==TEAM[c]);
+  // Only uck if a single enemy piece (not a tower, not a teammate)
+  if(enemies.length===1&&others.length===1&&!towerInfo(esq).isMixed){
+    killTok(enemies[0]);
+    log(nm+' ucks '+GS.names[enemies[0].color]+' on entry!','kl');
+  }
+  tok.pos='track';tok.sq=esq;
+  GS.playerExited[c]=true;
+  log(nm+' exits base!','hi');
+}
+// ── Animated piece movement ──
+const STEP_MS = 180; // ms per square step
+
+// Build list of visual positions for a move of dv squares
+function buildMoveSteps(tok, dv){
+  const c=tok.color, steps=[];
+  if(tok.pos==='home'){
+    for(let i=1;i<=dv;i++) steps.push({pos:'home',hp:Math.min(tok.hp+i,5)});
+    return steps;
+  }
+  const s=stepsFn(c,tok.sq), stt=stepsToTurn(c);
+  for(let i=1;i<=dv;i++){
+    if(s+i<=stt){ steps.push({pos:'track',sq:(tok.sq+i)%NS}); }
+    else{
+      const hp=s+i-stt-1;
+      if(hp>5) break;
+      steps.push({pos:'home',hp:Math.min(hp,5)});
+    }
+  }
+  return steps;
+}
+
+// Animate tok through steps, then call onDone (which runs the real move logic)
+function animateTokMove(tok, dv, onDone){
+  if(!tok||dv<=0){ onDone&&onDone(); return; }
+  const steps=buildMoveSteps(tok,dv);
+  if(!steps.length){ onDone&&onDone(); return; }
+
+  GS._animating=true; // block input during animation
+  let stepIdx=0;
+
+  function doStep(){
+    if(stepIdx>=steps.length){
+      GS._animating=false;
+      onDone&&onDone();
+      return;
+    }
+    const s=steps[stepIdx++];
+    // Temporarily move tok for visual redraw
+    const savedPos=tok.pos, savedSq=tok.sq, savedHp=tok.hp;
+    tok.pos=s.pos;
+    if(s.pos==='track') tok.sq=s.sq; else tok.hp=s.hp;
+    drawBoard();
+    tok.pos=savedPos; tok.sq=savedSq; tok.hp=savedHp;
+    setTimeout(doStep, STEP_MS);
+  }
+  doStep();
+}
+
+// Animate tower move (all pieces in tower step together)
+function animateTowerMove(toks, dv, onDone){
+  if(!toks||!toks.length||dv<=0){ onDone&&onDone(); return; }
+  // All pieces same sq — build steps from first piece
+  const steps=buildMoveSteps(toks[0],dv);
+  if(!steps.length){ onDone&&onDone(); return; }
+
+  GS._animating=true;
+  let stepIdx=0;
+
+  function doStep(){
+    if(stepIdx>=steps.length){
+      GS._animating=false;
+      onDone&&onDone();
+      return;
+    }
+    const s=steps[stepIdx++];
+    // Temporarily move all tower pieces
+    const saved=toks.map(t=>({pos:t.pos,sq:t.sq,hp:t.hp}));
+    toks.forEach(t=>{ t.pos=s.pos; if(s.pos==='track') t.sq=s.sq; else t.hp=s.hp; });
+    drawBoard();
+    toks.forEach((t,i)=>{ t.pos=saved[i].pos; t.sq=saved[i].sq; t.hp=saved[i].hp; });
+    setTimeout(doStep, STEP_MS);
+  }
+  doStep();
+}
+
+
+function doMoveTok(tok,dv){
+  const c=tok.color,nm=GS.names[c];
+  if(tok.pos==='home'){tok.hp+=dv;if(tok.hp>=5){tok.hp=5;tok.pos='done';log(nm+' gets one HOME! 🎉','wn');checkWin(c);}return;}
+  const s=stepsFn(c,tok.sq),stt=stepsToTurn(c);
+  if(s+dv<=stt){
+    tok.sq=(tok.sq+dv)%NS;
+    const others=onTrack(tok.sq).filter(t=>t.color!==c);
+    const enemies=others.filter(t=>TEAM[t.color]!==TEAM[c]); // only enemy team
+    if(enemies.length>0){
+      if(towerInfo(tok.sq).isMixed){
+        // Mixed tower — uck only enemies, leave teammates
+        enemies.forEach(e=>killTok(e));
+        log(nm+' ucks enemies in mixed tower!','kl');
+        tok._uckedThisTurn=true;
+      }else if(enemies.length===1&&others.length===1){
+        killTok(enemies[0]);
+        log(nm+' ucks '+GS.names[enemies[0].color]+'!','kl');
+        tok._uckedThisTurn=true;
+      }
+    }
+  }else{
+    const hs=s+dv-stt-1;tok.pos='home';tok.hp=hs;
+    if(hs>=5){tok.hp=5;tok.pos='done';log(nm+' gets one HOME! 🎉','wn');checkWin(c);}
+    else log(nm+' enters home column.','hi');
+  }
+}
+function doMoveTower(toks,dv,isDoubles){
+  const c=toks[0].color,nm=GS.names[c],ns=(toks[0].sq+dv)%NS;
+  const result=canTowerLand(c,toks.length,ns,isDoubles);
+  if(result.uck){const enemies=onTrack(ns).filter(t=>t.color!==c);enemies.forEach(e=>killTok(e));log(`${nm}'s tower UCKS enemy tower!`,'kl');}
+  else if(result.pass){log(`${nm}'s tower passes over enemy tower!`,'hi');}
+  else{const enemies=onTrack(ns).filter(t=>t.color!==c);enemies.forEach(e=>{killTok(e);log(`${nm} ucks ${GS.names[e.color]}!`,'kl');});}
+  toks.slice(0,2).forEach(t=>{t.sq=ns;});
+}
+function doMoveTowerHome(toks,dv){
+  // Tower enters home column together on doubles (rule 17)
+  const c=toks[0].color,nm=GS.names[c];
+  const s=stepsFn(c,toks[0].sq),stt=stepsToTurn(c);
+  const hp=s+dv-stt-1;
+  toks.slice(0,2).forEach(t=>{t.pos='home';t.hp=hp;});
+  if(hp>=5){toks.forEach(t=>{t.hp=5;t.pos='done';checkWin(c);});log(nm+' tower gets HOME! 🎉','wn');}
+  else log(nm+' tower enters home column together!','hi');
+}
+
+function killTok(tok){tok.pos='base';tok.sq=0;tok.hp=-1;}
+function killTeam(team){TEAM_COLORS[team].forEach(color=>{GS.toks[color].forEach(tok=>{if(tok.pos!=='done')killTok(tok);});log(`${GS.names[color]}'s tokens sent home!`,'pu');});}
+function checkWin(c){const team=TEAM[c];if(TEAM_COLORS[team].every(tc=>GS.toks[tc].every(t=>t.pos==='done'))){GS.winner=c;GS.winTeam=team;GS.phase='done';log(`🏆 Team ${TEAM_NAME[team]} WINS!`,'wn');setTimeout(()=>showWin(team),750);}}
+
+// ── TURN FLOW ──
+
+// Helper: should this player roll only one die?
+// Rule: last piece left in home shoot = one die
+// Rule: teammate all home and rolling to assist = one die
+function shouldRollOneDie(color){
+  const toks=GS.toks[color];
+  const activePieces=toks.filter(t=>t.pos!=='done');
+  if(activePieces.length===1&&activePieces[0].pos==='home')return true;
+  // Teammate assist: own pieces all done, rolling one die to help teammate
+  if(toks.every(t=>t.pos==='done')&&GS._assistMode)return true;
+  return false;
+}
+
+// Helper: check if teammate assist applies (teammate all home, roll 6 = extra turn)
+function checkTeammateAssist(color,v1,oneDie){
+  const team=TEAM[color];
+  const teammate=TEAM_COLORS[team].find(c=>c!==color);
+  if(!teammate)return;
+  const myDone=GS.toks[color].every(t=>t.pos==='done');
+  if(!myDone)return;
+  // I'm all home - if I roll a 6 I can keep rolling for teammate
+  if(v1===6){
+    GS._assistMode=true;
+    log(GS.names[color]+' rolled a 6 — assisting '+GS.names[teammate]+'!','hi');
+  }else{
+    GS._assistMode=false;
+  }
+}
+
+function doRoll(){
+  if(GS.phase!=='roll')return;
+  const c=GS.cur,nm=GS.names[c];
+  // Rule: last piece in home shoot rolls one die only
+  const oneDieOnly=shouldRollOneDie(c);
+  let v1,v2;
+  if(oneDieOnly){
+    v1=Math.floor(Math.random()*6)+1;v2=v1; // show same value on both, use only one
+    GS.d1=v1;GS.d2=null;
+  }else{
+    v1=Math.floor(Math.random()*6)+1;v2=Math.floor(Math.random()*6)+1;
+    GS.d1=v1;GS.d2=v2;
+  }
+  const dv=oneDieOnly?v1:v1+v2,isDoubles=!oneDieOnly&&v1===v2;
+  GS._isDoubles=isDoubles||(!oneDieOnly&&(v1===6||v2===6)); // Rule 21: 6 = roll again
+  animDice(v1,oneDieOnly?null:v2);
+  if(v1===6)GS.sixCount++;if(!oneDieOnly&&v2===6)GS.sixCount++;
+  if(isDoubles)GS.dblCount++;
+  log(nm+' rolled '+(oneDieOnly?v1:v1+'+'+v2+'='+dv)+(isDoubles?' (DOUBLES!)':''),isDoubles?'hi':'');
+
+  // Punishment checks (reduced thresholds when rolling one die)
+  const dblLimit=oneDieOnly?3:3,sixLimit=oneDieOnly?3:5;
+  if(GS.dblCount>=dblLimit&&GS.sixCount>=6&&!oneDieOnly){log(nm+' — 3 doubles AND 6 sixes! Team sent home!','pu');killTeam(TEAM[c]);GS.dblCount=0;GS.sixCount=0;setTimeout(nextTurn,700);renderUI();return;}
+  if(GS.dblCount>=dblLimit){log(nm+' — '+dblLimit+' doubles! Sent home!','pu');GS.toks[c].forEach(t=>{if(t.pos!=='done')killTok(t);});GS.dblCount=0;GS.sixCount=0;setTimeout(nextTurn,700);renderUI();return;}
+  if(GS.sixCount>=sixLimit){log(nm+' — '+sixLimit+' sixes! Sent home!','pu');GS.toks[c].forEach(t=>{if(t.pos!=='done')killTok(t);});GS.dblCount=0;GS.sixCount=0;setTimeout(nextTurn,700);renderUI();return;}
+
+  // Rule 4: Double-N on Nth turn exits ALL pieces — only if NO piece has EVER left base
+  const hasSixThisRoll=v1===6||(!oneDieOnly&&v2===6),pTurn=GS.playerTurns[c]+1;
+  if(isDoubles&&v1===pTurn&&pTurn<=6&&!hasSixThisRoll&&!GS.playerExited[c]){
+    const inBase=GS.toks[c].filter(t=>t.pos==='base');
+    if(inBase.length>0){
+      log(nm+' — double-'+v1+' on turn '+pTurn+'! ALL pieces exit! Roll again!','hi');
+      inBase.forEach(t=>doExitTok(t));
+      GS.phase='roll';GS.d1=null;GS.d2=null;
+      renderUI();if(GS.cpu[c])setTimeout(cpuGo,650);
+      return;
+    }
+  }
+
+  // Check if teammate is all home — they can roll one die and a 6 helps teammate
+  checkTeammateAssist(c,v1,oneDieOnly);
+
+  GS.actions=buildActions(v1,oneDieOnly?null:v2,c,oneDieOnly);
+  if(typeof mpPushState==='function')mpPushState();
+  advanceAction();
+}
+
+function advanceAction(){
+  const c=GS.cur;
+  // Rule: if only one active piece on board (not base/done) and 2 dice remain,
+  // that piece MUST use both dice — mark the action as mustUseBoth
+  const diceActions=GS.actions.filter(a=>a.type==='move');
+  if(diceActions.length===2){
+    const activePieces=GS.toks[c].filter(t=>t.pos==='track'||t.pos==='home');
+    const movable=activePieces.filter(t=>!t._uckedThisTurn&&canDoAction(t,{type:'move',dv:diceActions[0].dv+diceActions[1].dv}));
+    if(activePieces.length===1&&movable.length===1){
+      // Only one piece on board — must use total
+      GS.actions=[{type:'move',dv:diceActions[0].dv+diceActions[1].dv,
+        isDoubles:diceActions[0].isDoubles,_forced:true}];
+    }
+  }
+  while(GS.actions.length>0){
+    const act=GS.actions[0];
+    if(movableForAction(c,act).length>0)break;
+    // Tower moves are now offered via getDestinations for human players
+    // For CPU, still check if tower move is available as separate action type
+    if(act.type==='move_tower'){/* keep move_tower for CPU */break;}
+    if((act.type==='six_n'||act.type==='six_choice')&&GS.toks[c].some(t=>t.pos!=='done'))break;
+    GS.actions.shift();
+  }
+  if(GS.actions.length===0){
+    log('No moves available.','');
+    setTimeout(()=>{
+      if(GS._isDoubles){
+        log(GS.names[GS.cur]+' rolls again!','hi');
+        GS.phase='roll';GS.d1=null;GS.d2=null;
+        renderUI();if(GS.cpu[GS.cur])setTimeout(cpuGo,500);
+      }else nextTurn();
+    },450);
+    renderUI();return;
+  }
+  GS.phase='move';
+  GS.sel=null;
+  const mv=movableForAction(c,GS.actions[0]);
+  if(mv.length===1&&!GS.cpu[c])GS.sel=mv[0].color+'_'+mv[0].slot;
+  updateChalBtn();renderUI();
+  // Trigger CPU to pick its next action
+  if(GS.cpu[c]) setTimeout(cpuPick, 600);
+}
+
+function checkForcedSplit(color){
+  const v1=GS.d1,v2=GS.d2;if(!v1)return null;
+  const towers=findTowers(color);if(!towers.length)return null;
+  const singles=GS.toks[color].filter(t=>(t.pos==='track'||t.pos==='home')&&findTowerAt(t.sq,color).length<2);
+  if(singles.some(t=>canDoAction(t,{type:'move',dv:v1+v2})))return null;
+  for(const tower of towers)if(tower.length>=2){if(canDoAction(tower[0],{type:'move',dv:v1})||canDoAction(tower[1],{type:'move',dv:v2})||canDoAction(tower[0],{type:'move',dv:v1+v2}))return[{type:'move',dv:v1},{type:'move',dv:v2}];}
+  return null;
+}
+function findTowers(color){const m={};GS.toks[color].filter(t=>t.pos==='track').forEach(t=>{m[t.sq]=(m[t.sq]||[]);m[t.sq].push(t);});return Object.values(m).filter(a=>a.length>=2);}
+function findTowerAt(sq,color){return GS.toks[color].filter(t=>t.pos==='track'&&t.sq===sq);}
+
+// ── CHALLENGE ──
+function updateChalBtn(){const btn=document.getElementById('chal-btn');if(!btn)return;if(GS.phase!=='move'||GS.cpu[GS.cur]){btn.style.display='none';return;}btn.style.display=canChallenge(GS.cur)?'block':'none';}
+function canChallenge(color){for(const tok of GS.toks[color]){if(tok.pos==='base'){const i=towerInfo(ENTRY[color]);if(i.height>=2&&i.color&&i.color!==color)return true;}else if(tok.pos==='track'){const i=towerInfo((tok.sq+1)%NS);if(i.height>=2&&i.color&&i.color!==color)return true;}}return false;}
+function onChallenge(){if(!canChallenge(GS.cur))return;const color=GS.cur;let ct=null;for(const tok of GS.toks[color]){let sq=-1,h=0;if(tok.pos==='base'){const i=towerInfo(ENTRY[color]);if(i.height>=2&&i.color&&i.color!==color){sq=ENTRY[color];h=i.height;}}else if(tok.pos==='track'){const ns=(tok.sq+1)%NS;const i=towerInfo(ns);if(i.height>=2&&i.color&&i.color!==color){sq=ns;h=i.height;}}if(sq>=0){ct={sq,height:h,challenger:tok};break;}}if(!ct)return;GS.challenge={sq:ct.sq,towerHeight:ct.height,sixesNeeded:ct.height+1,sixesRolled:0,challenger:ct.challenger};GS.phase='challenge';log(`${GS.names[color]} challenges tower of ${ct.height}! Needs ${ct.height+1} sixes.`,'pu');renderUI();}
+function doChallengeRoll(){if(GS.phase!=='challenge'||!GS.challenge)return;const v1=Math.floor(Math.random()*6)+1,v2=Math.floor(Math.random()*6)+1;animDice(v1,v2);const sixes=(v1===6?1:0)+(v2===6?1:0);GS.challenge.sixesRolled+=sixes;const nm=GS.names[GS.cur];log(`${nm} challenge: ${v1}+${v2} (${sixes} sixes) total: ${GS.challenge.sixesRolled}/${GS.challenge.sixesNeeded}`,'');if(GS.challenge.sixesRolled>=GS.challenge.sixesNeeded){log(`${nm}'s challenge SUCCEEDS!`,'wn');const enemies=onTrack(GS.challenge.sq).filter(t=>t.color!==GS.cur);enemies.forEach(e=>killTok(e));const ch=GS.challenge.challenger;if(ch.pos==='base')ch.pos='track';ch.sq=GS.challenge.sq;GS.challenge=null;GS.phase='roll';GS.d1=null;GS.d2=null;}else log(`${nm} needs ${GS.challenge.sixesNeeded-GS.challenge.sixesRolled} more. Roll again.`,'');renderUI();}
+
+// ── EXEC ──
+function doExec(tok){
+  if(!GS.actions.length)return;
+  const act=GS.actions[0];
+  GS.sel=null;
+
+  function afterMove(){
+    if(GS.phase==='done'){renderUI();return;}
+    if(typeof mpPushState==='function')mpPushState();
+    if(GS.actions.length)advanceAction();
+    else finishTurn();
+  }
+
+  if(act.type==='exit'){
+    GS.actions.shift();doExitTok(tok);afterMove();
+  }else if(act.type==='six_n'){
+    GS.actions.shift();
+    if(tok.pos==='base'){
+      doExitTok(tok);afterMove();
+    }else{
+      animateTokMove(tok,6,()=>{ doMoveTok(tok,6); afterMove(); });
+    }
+  }else if(act.type==='six_choice'){
+    GS.actions.shift();
+    if(tok.pos==='base'){
+      doExitTok(tok);
+      GS.actions.unshift({type:'six_choice',dv:6,second:true});
+      afterMove();
+    }else{
+      animateTokMove(tok,6,()=>{
+        doMoveTok(tok,6);
+        if(GS.toks[tok.color].some(t=>t.pos==='base')){
+          GS.actions.unshift({type:'exit',dv:0});
+        }else{
+          GS.actions.unshift({type:'move',dv:6});
+        }
+        afterMove();
+      });
+    }
+  }else if(act.type==='move'){
+    const dv=act.dv;
+    GS.actions.shift();
+    animateTokMove(tok,dv,()=>{ doMoveTok(tok,dv); afterMove(); });
+  }else if(act.type==='move_tower'){
+    const dv=act.dv;
+    GS.actions.shift();
+    const tower=myTowerAt(tok.sq,tok.color);
+    if(act.intoHome){
+      animateTowerMove(tower,dv,()=>{ doMoveTowerHome(tower,dv); afterMove(); });
+    }else{
+      animateTowerMove(tower,dv,()=>{
+        doMoveTower(tower,dv,true);
+        if(GS.actions.length&&GS.actions[0].type==='move'&&GS.actions[0].dv===dv){
+          GS.actions.shift();
+        }
+        afterMove();
+      });
+    }
+  }
+}
+function nextTurn(){
+  // Clear uck flags from all pieces
+  Object.values(GS.toks).forEach(arr=>arr.forEach(t=>{t._uckedThisTurn=false;}));
+  const i=GS.turnOrder.indexOf(GS.cur);GS.playerTurns[GS.cur]++;GS.cur=GS.turnOrder[(i+1)%GS.turnOrder.length];GS.phase='roll';GS.d1=null;GS.d2=null;GS.sel=null;GS.dblCount=0;GS.sixCount=0;GS._isDoubles=false;GS.actions=[];GS.challenge=null;GS._assistMode=false;if(typeof mpPushState==='function')mpPushState();renderUI();if(GS.cpu[GS.cur])setTimeout(cpuGo,650);}
+
+// ── CPU ──
+function cpuGo(){
+  if(!GS||GS.phase==='done'||!GS.cpu[GS.cur])return;
+  document.getElementById('cpu').textContent=GS.names[GS.cur]+' thinking...';
+  if(GS.phase==='challenge'){setTimeout(doChallengeRoll,900);return;}
+  // Slower roll delay
+  setTimeout(()=>{
+    doRoll();
+    if(GS.phase==='move') setTimeout(cpuPick,900);
+  },800);
+}
+function cpuPick(){
+  const c=GS.cur;
+  if(!GS.actions.length){nextTurn();return;}
+  const act=GS.actions[0];
+
+  // Score a potential move: higher = better
+  function scoreTok(tok,dv){
+    if(!tok||tok.pos==='done') return -999;
+    const teamColors=TEAM_COLORS[TEAM[c]];
+    // Priority 1: get home
+    if(tok.pos==='home'&&tok.hp+dv>=5) return 1000;
+    // Priority 2: uck an enemy (only if not already ucked this turn)
+    if(!tok._uckedThisTurn&&tok.pos==='track'){
+      const ns=(tok.sq+dv)%NS;
+      const atDest=onTrack(ns);
+      const enemies=atDest.filter(t=>TEAM[t.color]!==TEAM[c]);
+      if(enemies.length===1&&towerInfo(ns).height===1) return 800; // single uck
+      if(enemies.length>1&&towerInfo(ns).isMixed) return 750; // mixed tower uck
+    }
+    // Priority 3: advance piece furthest along (closer to home = higher score)
+    if(tok.pos==='track'){
+      const s=stepsFn(c,tok.sq);
+      return s+dv; // higher steps = further along = better
+    }
+    if(tok.pos==='home') return 200+tok.hp+dv;
+    return 0;
+  }
+
+  // Tower move on doubles
+  if(act.type==='move'&&act.isDoubles){
+    const ta={type:'move_tower',dv:act.dv,isDoubles:true};
+    const tv=movableForAction(c,ta);
+    if(tv.length){
+      GS.sel=tv[0].color+'_'+tv[0].slot;renderUI();
+      setTimeout(()=>{
+        GS.actions[0]=ta;
+        doExec(tv[0]); // afterMove handles next action
+        document.getElementById('cpu').textContent='—';
+      },750);return;
+    }
+  }
+
+  // six_n or six_choice: prefer exit if no pieces out, else move furthest piece
+  if(act.type==='six_n'||act.type==='six_choice'){
+    const mv=movableForAction(c,act);
+    if(!mv.length){advanceAction();return;}
+    const basePieces=mv.filter(t=>t.pos==='base');
+    const boardPieces=mv.filter(t=>t.pos==='track'||t.pos==='home');
+    const piecesOut=GS.toks[c].filter(t=>t.pos==='track'||t.pos==='home').length;
+    let ch;
+    if(piecesOut===0&&basePieces.length) ch=basePieces[0]; // no pieces out — must exit
+    else if(piecesOut<2&&basePieces.length) ch=basePieces[0]; // prefer to get more out
+    else ch=boardPieces.sort((a,b)=>scoreTok(b,6)-scoreTok(a,6))[0]||mv[0];
+    GS.sel=ch.color+'_'+ch.slot;renderUI();
+    setTimeout(()=>{doExec(ch);document.getElementById('cpu').textContent='—';},750);return;
+  }
+
+  const mv=movableForAction(c,act);
+  if(!mv.length){advanceAction();return;}
+
+  // exit action
+  if(act.type==='exit'){
+    const mv0=mv[0];
+    GS.sel=mv0.color+'_'+mv0.slot;renderUI();
+    setTimeout(()=>{doExec(mv0);document.getElementById('cpu').textContent='—';},750);
+    return;
+  }
+
+  // Score all movable pieces and pick best
+  const dv=act.dv||0;
+  const scored=mv.map(t=>({tok:t,score:scoreTok(t,dv)}))
+    .sort((a,b)=>b.score-a.score);
+  const ch=scored[0].tok;
+
+  GS.sel=ch.color+'_'+ch.slot;renderUI();
+  setTimeout(()=>{
+    doExec(ch);
+    document.getElementById('cpu').textContent='—';
+  },750);
+}
+
+// ── INPUT ──
+function onRoll(){if(!GS)return;if(GS.phase==='challenge'){doChallengeRoll();return;}if(GS.phase!=='roll'||GS.cpu[GS.cur])return;doRoll();}
+function onTok(color,slot){
+  if(!GS||GS._animating||GS.phase!=='move'||GS.cur!==color||GS.cpu[color]||!GS.actions.length)return;
+  const act=GS.actions[0];
+  const tok=GS.toks[color][slot];
+  if(tok.pos==='done')return;
+
+  // six_n or six_choice: base=exit options, board=move6
+  if(act.type==='six_n'||act.type==='six_choice'){
+    if(!canDoAction(tok,act))return;
+    GS.sel=color+'_'+slot;renderUI();return;
+  }
+  // On doubles with tower: DON'T auto-convert — show both options (tower + single)
+  // The tower option appears in getDestinations as a 'T' labelled dest
+  if(!canDoAction(tok,act))return;
+  GS.sel=color+'_'+slot;renderUI();
+}
+function onDestClick(color,slot){
+  // Legacy - use first available action
+  if(!GS||GS.phase!=='move'||GS.cpu[color]||GS.cur!==color||!GS.actions.length)return;
+  const tok=GS.toks[color][slot];
+  if(canDoAction(tok,GS.actions[0]))doExec(tok);
+}
+
+function onDestClickDv(color,slot,dest){
+  if(!GS||GS._animating||GS.phase!=='move'||GS.cpu[color]||GS.cur!==color||!GS.actions.length)return;
+  const tok=GS.toks[color][slot];
+  if(!tok||tok.pos==='done')return;
+
+  if(dest.isSixExit){
+    // Base piece: exit using the six_n die
+    const sixIdx=GS.actions.findIndex(a=>a.type==='six_n');
+    if(sixIdx>=0) GS.actions.splice(sixIdx,1);
+    if(dest.exitOnly){
+      doExitTok(tok);
+      // N die stays in queue
+    }else if(dest.exitAndMove){
+      doExitTok(tok);
+      // Also remove the N die and move piece
+      const nIdx=GS.actions.findIndex(a=>a.type==='move');
+      if(nIdx>=0) GS.actions.splice(nIdx,1);
+      if(tok.pos!=='done') doMoveTok(tok,dest.moveDv||dest.dv);
+    }else{
+      // six_choice exit
+      const sciIdx=GS.actions.findIndex(a=>a.type==='six_choice');
+      if(sciIdx>=0) GS.actions.splice(sciIdx,1);
+      doExitTok(tok);
+      GS.actions.unshift({type:'six_choice',dv:6,second:true});
+    }
+    GS.sel=null;
+    if(GS.phase==='done'){renderUI();return;}
+    if(GS.actions.length)advanceAction(); else finishTurn();
+
+  }else if(dest.useNDie){
+    // Board piece: use only the N die (six_n stays for another piece/use)
+    const nIdx=GS.actions.findIndex(a=>a.type==='move'&&a.dv===dest.dv);
+    if(nIdx>=0) GS.actions.splice(nIdx,1);
+    else{const fi=GS.actions.findIndex(a=>a.type==='move');if(fi>=0)GS.actions.splice(fi,1);}
+    doMoveTok(tok,dest.dv);
+    GS.sel=null;
+    if(GS.phase==='done'){renderUI();return;}
+    if(GS.actions.length)advanceAction(); else finishTurn();
+
+  }else if(dest.useBoth){
+    // Board piece: use both six_n die AND N die on this piece
+    const sixIdx=GS.actions.findIndex(a=>a.type==='six_n');
+    if(sixIdx>=0) GS.actions.splice(sixIdx,1);
+    const nIdx=GS.actions.findIndex(a=>a.type==='move');
+    if(nIdx>=0) GS.actions.splice(nIdx,1);
+    doMoveTok(tok,dest.dv); // dest.dv = total (6+N)
+    GS.sel=null;
+    if(GS.phase==='done'){renderUI();return;}
+    if(GS.actions.length)advanceAction(); else finishTurn();
+
+  }else if(dest.useDice&&dest.useDice.length===2){
+    // Both regular dice on one piece — animate total distance
+    const diceActions=GS.actions.filter(a=>a.type==='move');
+    const d1=diceActions[0]?.dv,d2=diceActions[1]?.dv;
+    if(!d1||!d2)return;
+    const totalDv=d1+d2;
+    const a1=GS.actions.findIndex(a=>a.type==='move');
+    GS.actions.splice(a1,1);
+    const a2=GS.actions.findIndex(a=>a.type==='move');
+    if(a2>=0)GS.actions.splice(a2,1);
+    GS.sel=null;
+    animateTokMove(tok,totalDv,()=>{
+      // Apply both moves sequentially in logic (d1 then d2)
+      doMoveTok(tok,d1);
+      if(tok.pos!=='done') doMoveTok(tok,d2);
+      if(GS.phase==='done'){renderUI();return;}
+      finishTurn();
+    });
+    return;
+
+  }else if(dest.isTowerMove){
+    // Move the whole tower together — consumes both dice
+    const tower=myTowerAt(tok.sq,tok.color);
+    if(tower.length>=2){
+      const a1=GS.actions.findIndex(a=>a.type==='move');
+      if(a1>=0) GS.actions.splice(a1,1);
+      const a2=GS.actions.findIndex(a=>a.type==='move');
+      if(a2>=0) GS.actions.splice(a2,1);
+      GS.sel=null;
+      const dv=dest.dv;
+      animateTowerMove(tower,dv,()=>{
+        doMoveTower(tower,dv,true);
+        if(GS.phase==='done'){renderUI();return;}
+        if(GS.actions.length)advanceAction(); else finishTurn();
+      });
+      return;
+    }
+    GS.sel=null;
+    if(GS.phase==='done'){renderUI();return;}
+    if(GS.actions.length)advanceAction(); else finishTurn();
+
+  }else{
+    // Single die move
+    const dv=dest.dv;
+    if(!dv)return;
+    let found=false;
+    for(let i=0;i<GS.actions.length;i++){
+      if(!found&&GS.actions[i].type==='move'&&GS.actions[i].dv===dv){
+        GS.actions.splice(i,1);found=true;break;
+      }
+    }
+    if(!found){const fi=GS.actions.findIndex(a=>a.type==='move');if(fi>=0)GS.actions.splice(fi,1);}
+    doMoveTok(tok,dv);
+    GS.sel=null;
+    if(GS.phase==='done'){renderUI();return;}
+    if(GS.actions.length)advanceAction(); else finishTurn();
+  }
+}
+
+function finishTurn(){
+  if(GS._isDoubles){
+    log(GS.names[GS.cur]+' rolls again!','hi');
+    GS.phase='roll';GS.d1=null;GS.d2=null;GS._isDoubles=false;
+    if(typeof mpPushState==='function')mpPushState();
+    renderUI();if(GS.cpu[GS.cur])setTimeout(cpuGo,900);
+  }else nextTurn();
+}
+
+// ── LOG ──
+function log(msg,type=''){if(!GS)return;GS.log.unshift({msg,type});if(GS.log.length>60)GS.log.pop();const el=document.getElementById('gl');if(el)el.innerHTML=GS.log.slice(0,22).map(e=>`<div class="le ${e.type}">${e.msg}</div>`).join('');}
+
+// ══════════════════════════════════════════════
+//  3D DICE ANIMATION
+// ══════════════════════════════════════════════
+
+function animDice(v1,v2){
+  // v2 null = one die only (other die stays blank)
+  ['die1','die2'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.classList.remove('rolling');
+    void el.offsetWidth;
+    el.classList.add('rolling');
+  });
+  const delay=680;
+  setTimeout(()=>{
+    for(let i=0;i<9;i++){
+      const e1=document.getElementById('d1p'+i);
+      const e2=document.getElementById('d2p'+i);
+      if(e1)e1.className='dp'+(v1&&PIPS[v1].includes(i)?' on':'');
+      if(e2)e2.className='dp'+(v2&&PIPS[v2].includes(i)?' on':'');
+    }
+    const d1=document.getElementById('die1'),d2=document.getElementById('die2');
+    if(d1){d1.classList.remove('rolling');d1.style.transform='';}
+    if(d2){d2.classList.remove('rolling');d2.style.transform='';}
+  },delay);
+  const s=document.getElementById('dice-sum');
+  if(s)s.textContent=v2?(v1+' + '+v2+' = '+(v1+v2)+(v1===v2?' ★':'')):('Single die: '+v1);
+}
+
+function resetDice(){
+  ['die1','die2'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('rolling');el.style.transform='';}});
+  for(let i=0;i<9;i++){const e1=document.getElementById('d1p'+i),e2=document.getElementById('d2p'+i);if(e1)e1.className='dp';if(e2)e2.className='dp';}
+  const s=document.getElementById('dice-sum');if(s)s.textContent='';
+}
+
+// ══════════════════════════════════════════════
+//  3D PIECE RENDERING (SVG cylinders)
+// ══════════════════════════════════════════════
+
+function mk(tag,attrs){
+  const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  if(attrs)Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));
+  return el;
+}
+
+let _gradId=0;
+function drawPiece3D(svg,tx,ty,color,isSel,isMov,towerH,showBadge,onClickFn,isDone){
+  const rx=10,ry=4.5,h=13;
+  const lite=LITE[color],mid=MID[color],dark=HEX[color];
+  const uid='g'+(++_gradId);
+  const defs=svg.querySelector('defs');
+
+  // Top radial gradient
+  const rg=mk('radialGradient',{id:'rg'+uid,cx:'38%',cy:'32%',r:'65%',gradientUnits:'objectBoundingBox'});
+  rg.innerHTML=`<stop offset="0%" stop-color="${lite}"/>
+    <stop offset="55%" stop-color="${mid}"/>
+    <stop offset="100%" stop-color="${dark}"/>`;
+  defs.appendChild(rg);
+
+  // Side linear gradient
+  const lg=mk('linearGradient',{id:'lg'+uid,x1:'0%',y1:'0%',x2:'100%',y2:'0%'});
+  lg.innerHTML=`<stop offset="0%" stop-color="${dark}"/>
+    <stop offset="25%" stop-color="${mid}"/>
+    <stop offset="75%" stop-color="${mid}"/>
+    <stop offset="100%" stop-color="${dark}"/>`;
+  defs.appendChild(lg);
+
+  const g=mk('g',{cursor:(isMov||isSel)?'pointer':'default'});
+  g.addEventListener('click',onClickFn);
+
+  // Drop shadow ellipse
+  g.appendChild(mk('ellipse',{cx:tx+2,cy:ty+h+3,rx:rx+1,ry:ry,fill:'#000000',opacity:.3,'pointer-events':'none'}));
+
+  // Side face - path tracing top ellipse arc → straight sides → bottom ellipse arc
+  const sidePath=`M ${tx-rx} ${ty} A ${rx} ${ry} 0 0 1 ${tx+rx} ${ty} L ${tx+rx} ${ty+h} A ${rx} ${ry} 0 0 1 ${tx-rx} ${ty+h} Z`;
+  g.appendChild(mk('path',{d:sidePath,fill:`url(#lg${uid})`,'pointer-events':'none'}));
+
+  // Bottom ellipse
+  g.appendChild(mk('ellipse',{cx:tx,cy:ty+h,rx,ry,fill:dark,'pointer-events':'none'}));
+
+  // Top face ellipse
+  const rimColor=isSel?'#ffffff':isMov?lite:'#ffffff50';
+  const rimW=isSel?2.5:1.5;
+  g.appendChild(mk('ellipse',{cx:tx,cy:ty,rx,ry,fill:`url(#rg${uid})`,stroke:rimColor,'stroke-width':rimW}));
+
+  // Specular highlight (small bright ellipse top-left of top face)
+  g.appendChild(mk('ellipse',{cx:tx-rx*0.28,cy:ty-ry*0.35,rx:rx*0.28,ry:ry*0.3,fill:'#ffffff',opacity:.5,'pointer-events':'none'}));
+
+  // Label on top face
+  const lbl=mk('text',{x:tx,y:ty+3.5,'text-anchor':'middle','font-size':'7.5','font-weight':'bold',
+    fill:'#ffffffee','pointer-events':'none','font-family':'Courier New,monospace'});
+  lbl.textContent=isDone?'✓':color[0].toUpperCase();
+  if(isDone){lbl.setAttribute('font-size','9');}
+  g.appendChild(lbl);
+
+  // Tower height badge
+  if(showBadge&&towerH>=2){
+    g.appendChild(mk('circle',{cx:tx+rx-2,cy:ty-ry,r:6,fill:'#ffffffee',stroke:lite,'stroke-width':1.5,'pointer-events':'none'}));
+    const bt=mk('text',{x:tx+rx-2,y:ty-ry+3.5,'text-anchor':'middle','font-size':'7.5','font-weight':'bold',fill:dark,'pointer-events':'none'});
+    bt.textContent=towerH;g.appendChild(bt);
+  }
+
+  // Movable pulse ring
+  if(isMov&&!isSel){
+    const ring=mk('ellipse',{cx:tx,cy:ty,rx:rx+3,ry:ry+2,fill:'none',stroke:lite,'stroke-width':2,'pointer-events':'none'});
+    ring.innerHTML=`<animate attributeName="rx" values="${rx+1};${rx+5};${rx+1}" dur="1.1s" repeatCount="indefinite"/>
+      <animate attributeName="ry" values="${ry+1};${ry+3};${ry+1}" dur="1.1s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".9;0.1;.9" dur="1.1s" repeatCount="indefinite"/>`;
+    g.appendChild(ring);
+  }
+
+  // Selected shimmer
+  if(isSel){
+    const sr=mk('ellipse',{cx:tx,cy:ty,rx:rx+4,ry:ry+2.5,fill:'none',stroke:'#ffffff','stroke-width':2,'pointer-events':'none'});
+    sr.innerHTML=`<animate attributeName="opacity" values="1;0.3;1" dur="0.65s" repeatCount="indefinite"/>`;
+    g.appendChild(sr);
+  }
+
+  svg.appendChild(g);
+}
+
+// ── RENDER ──
+function renderUI(){
+  if(!GS)return;
+  document.getElementById('gl').innerHTML=GS.log.slice(0,22).map(e=>`<div class="le ${e.type}">${e.msg}</div>`).join('');
+  document.getElementById('plist').innerHTML=GS.turnOrder.map(c=>{
+    const f=GS.toks[c].filter(t=>t.pos==='done').length,ac=c===GS.cur;
+    const tc=TEAM[c]==='A'?'#1a6298':'#c0392b';
+    return`<div class="pr${ac?' on':''}"><div class="pd" style="background:${LITE[c]};"></div>
+      <span class="pn">${GS.names[c]}${GS.cpu[c]?' ⚙':''}</span>
+      <span class="ps">${'●'.repeat(f)}${'○'.repeat(4-f)}</span>
+      <span class="team-badge" style="background:${tc}22;color:${tc};border:1px solid ${tc}44;">${TEAM[c]}</span></div>`;
+  }).join('');
+  const tc=document.getElementById('tc'),tw=document.getElementById('tw'),ta=document.getElementById('ta');
+  if(tc){const c=GS.cur;tc.style.background=HEX[c]+'33';tc.style.borderColor=HEX[c];
+    tw.style.color=LITE[c];tw.textContent=GS.names[c]+(GS.cpu[c]?' (CPU)':'');
+    ta.textContent=GS.phase==='roll'?(GS.cpu[c]?'Thinking...':'Roll the dice'):GS.phase==='challenge'?'Challenge roll!':(()=>{
+      const a=GS.actions[0];
+      if(!a)return'—';
+      if(GS.sel)return'Click destination';
+      if(a.type==='exit')return'Bring a piece out';
+      if(a.type==='six_n')return'Select a piece: exit to Out square or exit+move';
+      if(a.type==='six_choice')return'Use the 6: exit a piece OR move 6 squares';
+      if(a.type==='move_tower')return'Move tower '+a.dv+' squares';
+      const rem=GS.actions.length;
+      return'Move a piece '+a.dv+' squares'+(rem>1?' ('+rem+' dice left)':'');
+    })();}
+  const td=document.getElementById('trk-dbl'),ts=document.getElementById('trk-six');
+  if(td){td.textContent=GS.dblCount;td.className='trk-val'+(GS.dblCount>=2?' warn':'');}
+  if(ts){ts.textContent=GS.sixCount;ts.className='trk-val'+(GS.sixCount>=4?' warn':'');}
+  const rb=document.getElementById('rbtn');
+  if(rb){rb.disabled=!((GS.phase==='roll'||GS.phase==='challenge')&&!GS.cpu[GS.cur]);rb.textContent=GS.phase==='challenge'?'CHALLENGE ROLL':'ROLL DICE';}
+  if(GS.d1===null)resetDice();
+  updateChalBtn();
+  const hint=document.getElementById('hint-txt');
+  if(hint)hint.textContent=GS.phase==='challenge'&&GS.challenge?`Challenge: need ${GS.challenge.sixesNeeded} sixes — rolled ${GS.challenge.sixesRolled} so far`:'Roll a 6 to exit · Click piece to select · Click highlighted square to move';
+  drawBoard();
+}
+
+// ── BOARD DRAW ──
+function isCrossCell(col,row){
+  return(row>=6&&row<=8&&col>=0&&col<=14)||(col>=6&&col<=8&&row>=0&&row<=14);
+}
+
+function cellFill(col,row){
+  // Door squares — 1 step inward from corner, coloured same as shoot
+  if(col===8&&row===1)return MID.green;    // green door (was row0, moved to row1)
+  if(col===13&&row===8)return MID.red;     // red door (was col14, moved to col13)
+  if(col===6&&row===13)return MID.blue;    // blue door (was row14, moved to row13)
+  if(col===1&&row===6)return MID.yellow;   // yellow door (was col0, moved to col1)
+  // Home shoot columns
+  if(col===7&&row>=1&&row<=6)return MID.green;
+  if(col===7&&row>=8&&row<=13)return MID.blue;
+  if(row===7&&col>=8&&col<=13)return MID.red;
+  if(row===7&&col>=1&&col<=6)return MID.yellow;
+  // Centre cell: drawn as 4-way chevron, dark base
+  if(col===7&&row===7)return'#1a1a0a';
+  return null;
+}
+
+const cx=col=>col*G+G/2, cy=row=>row*G+G/2;
+
+// Get single destination for a die value
+function getDestForDv(tok,dv){
+  if(!tok||dv<=0)return null;
+  const c=tok.color;
+  window.mpLog&&window.mpLog('getDestForDv color='+c+' sq='+tok.sq+' dv='+dv+' pos='+tok.pos);
+  if(tok.pos==='home'){
+    if(dv>(5-tok.hp))return null; // can't overshoot
+    const hp=tok.hp+dv;
+    return hp>=5?{col:7,row:7}:{col:HCOL[c][hp].col,row:HCOL[c][hp].row};
+  }
+  if(tok.pos==='track'){
+    const s=stepsFn(c,tok.sq),stt=stepsToTurn(c);
+    if(s+dv<=stt){const sq=(tok.sq+dv)%NS;return{col:TRACK[sq].col,row:TRACK[sq].row};}
+    const hp=s+dv-stt-1;
+    if(hp>5)return null;
+    return hp>=5?{col:7,row:7}:{col:HCOL[c][hp].col,row:HCOL[c][hp].row};
+  }
+  return null;
+}
+
+// Get all valid destination options for selected token given remaining actions
+// Returns [{col,row,dv,label,actionIdx}] — one entry per valid landing square
+// If two dice land on same square, merge them with combined label
+function getDestinations(tok){
+  if(!GS||!GS.actions.length||!tok)return[];
+  const c=tok.color;
+  const opts=[];
+
+  // Exit action
+  if(GS.actions[0].type==='exit'){
+    const sq=ENTRY[c];
+    return[{col:TRACK[sq].col,row:TRACK[sq].row,label:'6',dv:0,actionIdx:0}];
+  }
+  // six_n: base piece → show entry sq (label 'Out') AND entry+moveDv sq (label moveDv)
+  //        board piece → show move-6 dest AND board+6 dest (if moveDv, also show that after)
+  if(GS.actions[0].type==='six_n'){
+    const opts=[];
+    if(tok.pos==='base'){
+      // Base piece options:
+      // A: exit only → land on entry square
+      const entrySq=ENTRY[c];
+      opts.push({col:TRACK[entrySq].col,row:TRACK[entrySq].row,
+        label:'Out',dv:0,actionIdx:0,useDice:[0],isSixExit:true,exitOnly:true});
+      // B: exit then move N immediately → land on entry+N
+      const nAction=GS.actions.find(a=>a.type==='move');
+      if(nAction&&nAction.dv>0){
+        const exitTok={color:c,pos:'track',sq:entrySq,hp:-1,slot:tok.slot};
+        if(canDoAction(exitTok,{type:'move',dv:nAction.dv})){
+          const dest2=getDestForDv(exitTok,nAction.dv);
+          if(dest2) opts.push({...dest2,label:String(nAction.dv),dv:nAction.dv,
+            actionIdx:0,useDice:[0],isSixExit:true,exitAndMove:true,moveDv:nAction.dv});
+        }
+      }
+    }else{
+      // Board piece options:
+      // Option 1: move 6 (use just the six die)
+      if(canDoAction(tok,{type:'move',dv:6})){
+        const d=getDestForDv(tok,6);
+        if(d) opts.push({...d,label:'6',dv:6,actionIdx:0,useDice:[0]});
+      }
+      // Option 2: move N (use just the N die) — N is the paired move action
+      const nAction=GS.actions.find(a=>a.type==='move');
+      if(nAction&&nAction.dv>0&&canDoAction(tok,{type:'move',dv:nAction.dv})){
+        const d=getDestForDv(tok,nAction.dv);
+        if(d){
+          const dup=opts.find(o=>o.col===d.col&&o.row===d.row);
+          if(!dup) opts.push({...d,label:String(nAction.dv),dv:nAction.dv,actionIdx:1,useDice:[1],useNDie:true});
+        }
+      }
+      // Option 3: move 6+N (use both dice on this piece)
+      if(nAction&&nAction.dv>0){
+        const total=6+nAction.dv;
+        if(canDoAction(tok,{type:'move',dv:total})){
+          const d=getDestForDv(tok,total);
+          if(d){
+            const dup=opts.find(o=>o.col===d.col&&o.row===d.row);
+            if(dup){dup.label=String(total);dup.useDice=[0,1];dup.dv=total;dup.useBoth=true;}
+            else opts.push({...d,label:String(total),dv:total,actionIdx:-1,useDice:[0,1],useBoth:true});
+          }
+        }
+      }
+    }
+    return opts;
+  }
+  // six_choice: base=exit to entry, board=move6
+  if(GS.actions[0].type==='six_choice'){
+    if(tok.pos==='base'){
+      const sq=ENTRY[c];
+      return[{col:TRACK[sq].col,row:TRACK[sq].row,label:'Out',dv:6,actionIdx:0,useDice:[0],isSixExit:true}];
+    }
+    if(canDoAction(tok,{type:'move',dv:6})){
+      const dest=getDestForDv(tok,6);
+      if(dest)return[{...dest,label:'6',dv:6,actionIdx:0,useDice:[0]}];
+    }
+    return[];
+  }
+
+  // Collect individual die moves from remaining actions
+  const diceLeft=GS.actions.filter(a=>a.type==='move');
+  if(!diceLeft.length)return[];
+
+  const d1=diceLeft[0]?.dv;
+  const d2=diceLeft[1]?.dv;
+  const isDoubles=d1&&d2&&d1===d2&&diceLeft[0]?.isDoubles;
+
+  // Tower move option: on doubles, if piece is in a tower of 2+, offer tower move
+  // Tower uses BOTH dice (one per piece), moves whole tower dv squares
+  if(isDoubles&&tok.pos==='track'){
+    const tower=myTowerAt(tok.sq,tok.color);
+    if(tower.length>=2){
+      const ta={type:'move_tower',dv:d1,isDoubles:true};
+      if(canDoAction(tok,ta)){
+        const dest=getDestForDv(tok,d1);
+        if(dest){
+          // Add tower option with 'T' prefix so it's distinguishable
+          opts.push({...dest,dv:d1,label:'T'+d1,actionIdx:-2,isTowerMove:true,useDice:[0,1]});
+        }
+      }
+    }
+  }
+
+  // Option 1: use first die on this piece
+  if(d1){
+    if(canDoAction(tok,{type:'move',dv:d1})){
+      const dest=getDestForDv(tok,d1);
+      if(dest)opts.push({...dest,dv:d1,label:String(d1),actionIdx:0,useDice:[0]});
+    }
+  }
+
+  // Option 2: use second die on this piece (if different action index)
+  if(d2&&d2!==d1){
+    if(canDoAction(tok,{type:'move',dv:d2})){
+      const dest=getDestForDv(tok,d2);
+      if(dest){
+        // Check if same square as option 1 — if so merge label
+        const dup=opts.find(o=>o.col===dest.col&&o.row===dest.row);
+        if(!dup)opts.push({...dest,dv:d2,label:String(d2),actionIdx:1,useDice:[1]});
+      }
+    }
+  } else if(d2&&d2===d1){
+    // Same die value twice (doubles) — second die still shows as separate option
+    if(canDoAction(tok,{type:'move',dv:d2})){
+      const dest=getDestForDv(tok,d2);
+      if(dest){
+        const dup=opts.find(o=>o.col===dest.col&&o.row===dest.row);
+        if(!dup)opts.push({...dest,dv:d2,label:String(d2),actionIdx:1,useDice:[1]});
+        // same square handled below
+      }
+    }
+  }
+
+  // Option 3: use BOTH dice on this piece
+  // Mathematically identical to moving the total distance directly
+  if(d1&&d2){
+    const totalDv=d1+d2;
+    // Check piece can move the total (direct calculation, no sequential sim needed)
+    if(canDoAction(tok,{type:'move',dv:totalDv})){
+      const finalDest=getDestForDv(tok,totalDv);
+      if(finalDest){
+        const dup=opts.find(o=>o.col===finalDest.col&&o.row===finalDest.row);
+        if(dup){dup.label=String(totalDv);dup.useDice=[0,1];dup.dv=totalDv;}
+        else opts.push({...finalDest,dv:totalDv,label:String(totalDv),actionIdx:-1,useDice:[0,1]});
+      }
+    }
+  }
+
+  return opts;
+}
+
+// Legacy single-destination getter (kept for compatibility)
+function getDestination(tok){
+  const opts=getDestinations(tok);
+  return opts.length?opts[0]:null;
+}
+
+function drawBoard(){
+  const svg=document.getElementById('svg');if(!svg)return;
+  svg.innerHTML='';_gradId=0;
+  const defs=mk('defs',{});svg.appendChild(defs);
+
+  // Wood background with grain
+  const woodGrad=mk('linearGradient',{id:'woodBg',x1:'0%',y1:'0%',x2:'100%',y2:'100%'});
+  woodGrad.innerHTML=`<stop offset="0%" stop-color="#8a6525"/><stop offset="40%" stop-color="#7a5520"/><stop offset="100%" stop-color="#6a4515"/>`;
+  defs.appendChild(woodGrad);
+  svg.appendChild(mk('rect',{x:0,y:0,width:SZ,height:SZ,fill:'url(#woodBg)',rx:3}));
+  // Grain lines
+  for(let i=0;i<18;i++){
+    const y=i*30;
+    svg.appendChild(mk('line',{x1:0,y1:y,x2:SZ,y2:y+15,stroke:'#5a3810',opacity:.18,'stroke-width':2.5}));
+  }
+
+  // Board cells - first pass: coloured home fills
+  for(let row=0;row<N;row++){
+    for(let col=0;col<N;col++){
+      if(!isCrossCell(col,row))continue;
+      const fill=cellFill(col,row);
+      if(fill) svg.appendChild(mk('rect',{x:col*G,y:row*G,width:G,height:G,fill,stroke:'none'}));
+    }
+  }
+  // Second pass: grid lines over ALL cross cells (track squares = bare wood + lines)
+  for(let row=0;row<N;row++){
+    for(let col=0;col<N;col++){
+      if(!isCrossCell(col,row))continue;
+      svg.appendChild(mk('rect',{x:col*G,y:row*G,width:G,height:G,fill:'none',stroke:'#3a2010','stroke-width':.8}));
+    }
+  }
+
+  // Centre finish star
+  const star=mk('text',{x:cx(7),y:cy(7)+7,'text-anchor':'middle','font-size':'20',fill:'#c8a035cc','pointer-events':'none'});
+  star.textContent='★';svg.appendChild(star);
+
+  // ── DOOR SQUARE ARROWS: baked into a pointer-events:none group ──
+  {
+    const ag=mk('g',{'pointer-events':'none'});
+    [{col:8,row:1,txt:'▼',c:'green'},
+     {col:13,row:8,txt:'◄',c:'red'},
+     {col:6,row:13,txt:'▲',c:'blue'},
+     {col:1,row:6,txt:'►',c:'yellow'}]
+    .forEach(({col,row,txt,c})=>{
+      const t=mk('text',{x:cx(col),y:cy(row)+5,'text-anchor':'middle','font-size':'11',
+        fill:'#ffffffdd','font-weight':'bold'});
+      t.textContent=txt;ag.appendChild(t);
+    });
+    svg.appendChild(ag);
+  }
+
+  // ── SHOOT ENTRY ARROWS: middle square at each arm tip ──
+  {
+    const sg=mk('g',{'pointer-events':'none'});
+    [{col:7,row:0, txt:'▼',c:'green'},
+     {col:14,row:7,txt:'◄',c:'red'},
+     {col:7,row:14,txt:'▲',c:'blue'},
+     {col:0,row:7, txt:'►',c:'yellow'}]
+    .forEach(({col,row,txt,c})=>{
+      const t=mk('text',{x:cx(col),y:cy(row)+5,'text-anchor':'middle','font-size':'11',
+        fill:LITE[c]+'ee','font-weight':'bold'});
+      t.textContent=txt;sg.appendChild(t);
+    });
+    svg.appendChild(sg);
+  }
+
+  // ── CENTRE CELL: 4-way chevron split matching real board ──
+  // 4 triangles meeting at the pixel centre, each in its shoot colour
+  {
+    const G34=34;
+    const ox=7*G34, oy=7*G34; // cell top-left
+    const mx=ox+G34/2, my=oy+G34/2; // pixel centre
+    // Triangle: top=green, right=red, bottom=blue, left=yellow
+    const tris=[
+      [MID.green,  `${ox},${oy} ${ox+G34},${oy} ${mx},${my}`],
+      [MID.red,    `${ox+G34},${oy} ${ox+G34},${oy+G34} ${mx},${my}`],
+      [MID.blue,   `${ox+G34},${oy+G34} ${ox},${oy+G34} ${mx},${my}`],
+      [MID.yellow, `${ox},${oy+G34} ${ox},${oy} ${mx},${my}`],
+    ];
+    tris.forEach(([fill,pts])=>{
+      svg.appendChild(mk('polygon',{points:pts,fill,stroke:'#00000030','stroke-width':.6,'pointer-events':'none'}));
+    });
+    // Diagonal dividing lines centre->corners for crisp edges
+    [[ox,oy],[ox+G34,oy],[ox+G34,oy+G34],[ox,oy+G34]].forEach(([ex,ey])=>{
+      svg.appendChild(mk('line',{x1:mx,y1:my,x2:ex,y2:ey,stroke:'#00000050','stroke-width':.8,'pointer-events':'none'}));
+    });
+  }
+
+  // Base area labels
+  GS.turnOrder.forEach(color=>{
+    const lp={green:{col:11.5,row:1.0},red:{col:11.5,row:10.5},blue:{col:2.5,row:10.5},yellow:{col:2.5,row:1.0}}[color];
+    const lbl=mk('text',{x:cx(lp.col),y:cy(lp.row)+3,'text-anchor':'middle','font-size':'7',fill:LITE[color]+'80','pointer-events':'none'});
+    lbl.textContent=(GS.names[color]||color).toUpperCase().substring(0,7);svg.appendChild(lbl);
+  });
+
+  // Movable action info
+  const act=GS.phase==='move'&&GS.actions.length?GS.actions[0]:null;
+
+  GS.turnOrder.forEach(color=>{
+    const mv=act&&GS.cur===color?movableForAction(color,act):[];
+    const tvMv=act&&act.type==='move'&&act.isDoubles&&GS.cur===color?movableForAction(color,{type:'move_tower',dv:act.dv,isDoubles:true}):[];
+
+    // Collect all tokens to draw, sorted by position so stacked pieces render correctly
+    const toDraw=GS.toks[color].filter(t=>t.pos!=='done');
+    // Draw done tokens separately at centre
+    GS.toks[color].filter(t=>t.pos==='done').forEach((tok)=>{
+      const b=BASE[color][tok.slot];
+      const tx=cx(b.col),ty=cy(b.row);
+      drawPiece3D(svg,tx,ty,color,false,false,1,false,()=>{},true); // true=flipped/done
+    });
+
+    // Group track tokens by square to handle stacking
+    const bySquare={};
+    GS.toks[color].filter(t=>t.pos==='track').forEach(t=>{(bySquare[t.sq]=bySquare[t.sq]||[]).push(t);});
+
+    GS.toks[color].forEach(tok=>{
+      if(tok.pos==='done')return;
+      const id=color+'_'+tok.slot;
+      const isSel=GS.sel===id;
+      const isMov=!!mv.find(t=>t.slot===tok.slot)||!!tvMv.find(t=>t.slot===tok.slot);
+      let tx,ty;
+
+      if(tok.pos==='base'){
+        const b=BASE[color][tok.slot];tx=cx(b.col);ty=cy(b.row);
+      }else if(tok.pos==='track'){
+        const sq=TRACK[tok.sq];tx=cx(sq.col);ty=cy(sq.row);
+        const stack=bySquare[tok.sq]||[];
+        const idx=stack.indexOf(tok);
+        if(stack.length>1){
+          // Stagger tokens within stack: spread horizontally
+          const xOff=[-6,6,-3,3][idx%4];
+          tx+=xOff;
+          // Visually stack (each piece slightly higher = lower ty for cylinder top)
+          ty-=idx*2;
+        }
+      }else if(tok.pos==='home'){
+        const hp=Math.min(tok.hp,5);tx=cx(HCOL[color][hp].col);ty=cy(HCOL[color][hp].row);
+      }
+      if(tx===undefined)return;
+
+      const stack=tok.pos==='track'?(bySquare[tok.sq]||[]):[];
+      const isTopOfStack=stack.length===0||stack.indexOf(tok)===stack.length-1;
+      const towerH=stack.length;
+
+      drawPiece3D(svg,tx,ty,color,isSel,isMov,towerH,isTopOfStack,()=>onTok(color,tok.slot));
+    });
+  });
+
+  // Destination highlight square
+  if(GS.sel&&GS.phase==='move'){
+    const[selColor,slotStr]=GS.sel.split('_');
+    const selTok=GS.toks[selColor]?.[+slotStr];
+    // Only show to current player and teammate (not opponents)
+    const isTeammate=selColor&&(selColor===GS.cur||TEAM[selColor]===TEAM[GS.cur]);
+    if(selTok&&!GS.cpu[selColor]&&isTeammate){
+      const dests=getDestinations(selTok);
+      dests.forEach(dest=>{
+        if(!dest)return;
+        const px=dest.col*G, py=dest.row*G;
+        // Highlight box
+        const destBg=mk('rect',{x:px,y:py,width:G,height:G,
+          fill:LITE[selColor]+'35',stroke:LITE[selColor],'stroke-width':2.5,rx:3,cursor:'pointer'});
+        destBg.innerHTML='<animate attributeName="opacity" values=".5;1;.5" dur=".85s" repeatCount="indefinite"/>';
+        destBg.addEventListener('click',()=>onDestClickDv(selColor,+slotStr,dest));
+        svg.appendChild(destBg);
+        // Die value label in the square — tower moves shown in gold
+        const lbl=mk('text',{x:px+G/2,y:py+G/2+5,'text-anchor':'middle',
+          'font-size':dest.isTowerMove?'10':'12','font-weight':'bold',
+          'font-family':'Courier New,monospace',
+          fill:dest.isTowerMove?'#f0c040':'#ffffff','pointer-events':'none'});
+        lbl.textContent=dest.label;
+        lbl.innerHTML+='<animate attributeName="opacity" values=".5;1;.5" dur=".85s" repeatCount="indefinite"/>';
+        svg.appendChild(lbl);
+      });
+    }
+  }
+}
+
+// ── WIN ──
+function showWin(team){
+  document.getElementById('wteam').textContent=TEAM_NAME[team];
+  document.getElementById('wteam').style.color=team==='A'?LITE.green:LITE.red;
+  document.getElementById('wplayers').textContent=TEAM_COLORS[team].map(c=>GS.names[c]).join(' & ');
+  document.getElementById('ws').classList.add('show');
+}
+
+// ══════════════════════════════════════════════
+//  SETUP / DRAFT / PICK
+// ══════════════════════════════════════════════
+function buildNamesUI(){
+  const cols=['green','red','blue','yellow'];
+  const nr=document.getElementById('namerows');
+  const cg=document.getElementById('cpug');
+  if(!nr||!cg) return;
+  nr.innerHTML='';
+  cg.innerHTML='';
+  [0,1,2,3].forEach(i=>{
+    // Name row
+    const row=document.createElement('div'); row.className='nrow';
+    const dot=document.createElement('div'); dot.className='nd'; dot.style.background=LITE[cols[i]];
+    const inp=document.createElement('input'); inp.className='ni'; inp.id='sn'+i;
+    inp.type='text'; inp.value=CFG.names[i]; inp.placeholder='Player '+(i+1);
+    inp.addEventListener('input',()=>{ CFG.names[i]=inp.value; if(typeof mpPushLobby==='function'&&window.mpIsHost&&window.mpRoomCode) mpPushLobby(); });
+    row.appendChild(dot); row.appendChild(inp); nr.appendChild(row);
+    // CPU button
+    const btn=document.createElement('button');
+    btn.className='ob'+(CFG.cpu[i]?' s':'');
+    btn.style.cssText='font-size:.62rem;padding:8px 3px;';
+    const lbl=document.createElement('div'); lbl.style.cssText='color:'+LITE[cols[i]]+';font-size:.55rem;margin-bottom:1px;'; lbl.textContent=cols[i].toUpperCase();
+    btn.appendChild(lbl);
+    btn.appendChild(document.createTextNode(CFG.cpu[i]?'CPU':'Human'));
+    btn.addEventListener('click',()=>togCPU(i,btn));
+    cg.appendChild(btn);
+  });
+}
+function togCPU(i,btn){CFG.cpu[i]=!CFG.cpu[i];btn.classList.toggle('s');const c=['green','red','blue','yellow'][i];btn.innerHTML=`<div style="color:${LITE[c]};font-size:.55rem;margin-bottom:1px;">${c.toUpperCase()}</div>${CFG.cpu[i]?'CPU':'Human'}`;}
+
+function makeDraftDieHTML(seat){
+  return`<div class="draft-die-scene"><div class="draft-die-wrap" id="dpdie${seat}">
+    <div class="draft-die-face f1">
+      ${[...Array(9)].map((_,i)=>`<div class="dp" id="ddd${seat}p${i}"></div>`).join('')}
+    </div>
+    <div class="draft-die-face f6">
+      <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+      <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+      <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+    </div>
+    <div class="draft-die-face f2">
+      <div class="dp on"></div><div class="dp"></div><div class="dp"></div>
+      <div class="dp"></div><div class="dp"></div><div class="dp"></div>
+      <div class="dp"></div><div class="dp"></div><div class="dp on"></div>
+    </div>
+    <div class="draft-die-face f5">
+      <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+      <div class="dp"></div><div class="dp on"></div><div class="dp"></div>
+      <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+    </div>
+    <div class="draft-die-face f3">
+      <div class="dp on"></div><div class="dp"></div><div class="dp"></div>
+      <div class="dp"></div><div class="dp on"></div><div class="dp"></div>
+      <div class="dp"></div><div class="dp"></div><div class="dp on"></div>
+    </div>
+    <div class="draft-die-face f4">
+      <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+      <div class="dp on"></div><div class="dp"></div><div class="dp on"></div>
+      <div class="dp"></div><div class="dp"></div><div class="dp"></div>
+    </div>
+  </div></div>`;
+}
+
+function startDraft(){
+  CFG.names=[0,1,2,3].map(i=>{const el=document.getElementById(`sn${i}`);return el?el.value.trim()||`Player ${i+1}`:`Player ${i+1}`;});
+  DRAFT={rolls:[null,null,null,null],order:[],pickQueue:[],picked:[],available:['green','red','blue','yellow'],_shuffled:[]};
+  window._mpDraftPhase='roll';
+  document.getElementById('ov-names').classList.add('hidden');
+  document.getElementById('ov-draft').classList.remove('hidden');
+  buildDraftUI();
+  if(typeof mpPushDraft==='function') mpPushDraft();
+  if(typeof mpPushLobby==='function') mpPushLobby();
+  // Set a new session ID and clear stale roll data
+  window._draftSessionId = Date.now();
+  if(window.mpRoomCode && typeof db!=='undefined'){
+    try{
+      db.ref('rooms/'+window.mpRoomCode+'/draftRolls').set({_sid: window._draftSessionId})
+        .catch(()=>{});
+    } catch(e){}
+  }
+}
+
+function buildDraftUI(){
+  window.mpLog&&window.mpLog('buildDraftUI: CFG.cpu='+JSON.stringify(CFG.cpu)+' mpMySeat='+window.mpMySeat);
+  document.getElementById('draft-grid').innerHTML=[0,1,2,3].map(i=>`
+    <div class="draft-player" id="dp${i}">
+      <div class="dp-name">${CFG.names[i]}</div>
+      ${makeDraftDieHTML(i)}
+      <div class="dp-result" id="dpr${i}">—</div>
+      ${CFG.cpu[i]?`<div style="font-size:.55rem;color:#888;margin-top:4px;">CPU rolling...</div>`
+        :`<button class="dp-btn" id="dpbtn${i}" onclick="draftRoll(${i})">ROLL</button>`}
+    </div>`).join('');
+  document.getElementById('draft-status').textContent='Each player rolls · Highest picks colour first';
+  document.getElementById('draft-proceed').style.display='none';
+  // Apply any already-rolled values (handles case where rolls arrived before UI built)
+  [0,1,2,3].forEach(seat=>{
+    const v=DRAFT.rolls[seat]; if(v===null) return;
+    for(let i=0;i<9;i++){const e=document.getElementById('ddd'+seat+'p'+i);if(e)e.className='dp'+(PIPS[v].includes(i)?' on':'');}
+    const r=document.getElementById('dpr'+seat); if(r) r.textContent='Rolled: '+v;
+    const b=document.getElementById('dpbtn'+seat); if(b) b.disabled=true;
+  });
+  // Only host auto-rolls CPU seats — clients receive results via watchDraftRolls
+  if(!window.mpRoomCode||window.mpIsHost){
+    setTimeout(()=>{[0,1,2,3].forEach(i=>{if(CFG.cpu[i]&&DRAFT.rolls[i]===null)setTimeout(()=>draftRoll(i),300+i*200);});},300);
+  }
+}
+
+function draftRoll(seat){
+  window.mpLog&&window.mpLog('draftRoll('+seat+') called, rolls[seat]='+DRAFT.rolls[seat]+' mpMySeat='+window.mpMySeat);
+  if(DRAFT.rolls[seat]!=null){ window.mpLog&&window.mpLog('draftRoll blocked: already rolled (val='+DRAFT.rolls[seat]+')','err'); return; }
+  const btn=document.getElementById('dpbtn'+seat);if(btn)btn.disabled=true;
+  const v=Math.floor(Math.random()*6)+1;
+  // Animate die
+  const dieEl=document.getElementById('dpdie'+seat);
+  if(dieEl){
+    dieEl.classList.remove('rolling');
+    void dieEl.offsetWidth;
+    dieEl.classList.add('rolling');
+  }
+  // After animation: record roll locally AND push to Firebase
+  setTimeout(()=>{
+    for(let i=0;i<9;i++){const e=document.getElementById('ddd'+seat+'p'+i);if(e)e.className='dp'+(PIPS[v].includes(i)?' on':'');}
+    if(dieEl){dieEl.classList.remove('rolling');dieEl.style.transform='';}
+    DRAFT.rolls[seat]=v;
+    document.getElementById('dpr'+seat).textContent='Rolled: '+v;
+    document.getElementById('dp'+seat).classList.add('rolling');
+    // Push this roll to Firebase so other devices see it
+    if(window.mpRoomCode && window.mpDb){
+      try {
+        window.mpDb.ref('rooms/'+window.mpRoomCode+'/draftRolls/'+seat).set(v)
+          .then(()=>window.mpLog&&window.mpLog('pushed draftRoll seat'+seat+'='+v,'ok'))
+          .catch(e=>{ window.mpLog&&window.mpLog('draftRoll push err: '+e,'err'); });
+      } catch(e){ window.mpLog&&window.mpLog('draftRoll push ex: '+e,'err'); }
+    } else {
+      window.mpLog&&window.mpLog('draftRoll push skipped: mpDb='+!!window.mpDb+' room='+window.mpRoomCode,'err');
+    }
+    checkDraftComplete();
+    if(typeof mpPushDraft==='function') mpPushDraft();
+  },650);
+}
+
+function checkDraftComplete(){if(!DRAFT.rolls.some(r=>r==null)&&(!window.mpRoomCode||window.mpIsHost))resolveDraftOrder();}
+function resolveDraftOrder(){
+  const maxVal=Math.max(...DRAFT.rolls);
+  const tied=DRAFT.rolls.map((v,i)=>v===maxVal?i:-1).filter(i=>i>=0);
+  if(tied.length>1){
+    document.getElementById('draft-status').textContent='Tie between '+tied.map(s=>CFG.names[s]).join(' & ')+'! Re-rolling...';
+    setTimeout(()=>{
+      // Reset tied players
+      tied.forEach(s=>{
+        DRAFT.rolls[s]=null;
+        // Clear pip display
+        for(let i=0;i<9;i++){const e=document.getElementById('ddd'+s+'p'+i);if(e)e.className='dp';}
+        // Clear result text
+        document.getElementById('dpr'+s).textContent='—';
+        document.getElementById('dp'+s).classList.remove('rolling');
+        // Re-enable human buttons
+        const btn=document.getElementById('dpbtn'+s);
+        if(btn){btn.disabled=false;btn.textContent='ROLL';}
+      });
+      // Stagger CPU re-rolls so they don't race
+      let cpuDelay=200;
+      tied.forEach(s=>{
+        if(CFG.cpu[s]){
+          setTimeout(()=>draftRoll(s),cpuDelay);
+          cpuDelay+=300;
+        }
+      });
+    },900);
+    return;
+  }
+  DRAFT.order=[0,1,2,3].sort((a,b)=>DRAFT.rolls[b]-DRAFT.rolls[a]);
+  DRAFT.pickQueue=[...DRAFT.order];
+  document.getElementById('draft-status').textContent='Pick order: '+DRAFT.order.map(s=>CFG.names[s]+'('+DRAFT.rolls[s]+')').join(' → ');
+  document.getElementById('draft-proceed').style.display='block';
+  if(typeof mpPushDraft==='function') mpPushDraft();
+}
+
+function startPickPhase(){
+  document.getElementById('ov-draft').classList.add('hidden');
+  document.getElementById('ov-pick').classList.remove('hidden');
+  DRAFT.picked=[];DRAFT.available=['green','red','blue','yellow'];
+  DRAFT._shuffled=shuffleArr(['green','red','blue','yellow']);
+  window._mpDraftPhase='pick';
+  window._pickUIBuilt=true;
+  buildPickUI();advancePick();
+  if(typeof mpPushDraft==='function') mpPushDraft();
+}
+function shuffleArr(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function buildPickUI(){
+  document.getElementById('pieces-grid').innerHTML=DRAFT._shuffled.map((_,idx)=>`
+    <div class="piece face-down" id="piece${idx}" onclick="pickPiece(${idx})">
+      <span style="font-size:2rem;opacity:.3;">?</span></div>`).join('');
+}
+function advancePick(){
+  if(!DRAFT.pickQueue.length){finaliseDraft();return;}
+  const seat=DRAFT.pickQueue[0],isCpu=CFG.cpu[seat];
+  document.getElementById('pick-instr').textContent=`${CFG.names[seat]}'s turn to pick.${isCpu?' (CPU picking...)':' Choose a face-down piece.'}`;
+  document.getElementById('pick-status').textContent=`${DRAFT.picked.length} of 4 picked.`;
+  DRAFT._shuffled.forEach((_,idx)=>{const el=document.getElementById(`piece${idx}`);if(!el)return;const avail=DRAFT.available.includes(DRAFT._shuffled[idx])&&!isCpu;el.classList.toggle('taken',!avail);el.style.pointerEvents=avail?'auto':'none';});
+  if(isCpu&&(!window.mpRoomCode||window.mpIsHost)){const av=DRAFT._shuffled.map((c,i)=>DRAFT.available.includes(c)?i:-1).filter(i=>i>=0);setTimeout(()=>pickPiece(av[Math.floor(Math.random()*av.length)]),800);}
+}
+function pickPiece(idx){
+  // Only allow pick if it's this device's seat turn
+  if(window.mpRoomCode&&window.mpMySeat!==null&&DRAFT.pickQueue.length&&DRAFT.pickQueue[0]!==window.mpMySeat)return;
+  const seat=DRAFT.pickQueue[0],color=DRAFT._shuffled[idx];if(!DRAFT.available.includes(color))return;
+  const el=document.getElementById(`piece${idx}`);
+  el.style.background=HEX[color];el.style.borderColor=LITE[color];el.classList.remove('face-down');el.classList.add('revealed');el.onclick=null;
+  el.innerHTML=`<span style="font-size:.65rem;color:${LITE[color]};">${color.toUpperCase()}</span>`;
+  DRAFT.available=DRAFT.available.filter(c=>c!==color);DRAFT.picked.push({seat,color});DRAFT.pickQueue.shift();
+  document.getElementById('pick-status').textContent=`${CFG.names[seat]} got ${color.toUpperCase()}! ${DRAFT.picked.length} of 4 picked.`;
+  // Push this pick to Firebase so host applies it
+  if(window.mpRoomCode && window.mpDb){
+    window.mpDb.ref('rooms/'+window.mpRoomCode+'/draftPicks/'+seat).set(color)
+      .then(()=>window.mpLog&&window.mpLog('pushed pick seat'+seat+'='+color,'ok'))
+      .catch(e=>window.mpLog&&window.mpLog('pick push err:'+e,'err'));
+  }
+  if(typeof mpPushDraft==='function') mpPushDraft();
+  setTimeout(advancePick,600);
+}
+function finaliseDraft(){
+  if(window.mpRoomCode&&!window.mpIsHost) return; // only host finalises
+  DRAFT.picked.forEach(({seat,color})=>{CFG.seatColor[seat]=color;});
+  setTimeout(()=>{
+    document.getElementById('ov-pick').classList.add('hidden');
+    GS=initGame();
+    // Rule 28: highest draft roller goes first, rest follow in draft roll order
+    const rollOrder=[...DRAFT.order]; // seats sorted by roll descending
+    GS.turnOrder=rollOrder.map(seat=>CFG.seatColor[seat]);
+    GS.cur=GS.turnOrder[0];
+    const tA=TEAM_COLORS.A.map(c=>GS.names[c]).join(' & '),tB=TEAM_COLORS.B.map(c=>GS.names[c]).join(' & ');
+    GS.log.push({msg:'Teams — A: '+tA+' | B: '+tB,type:'hi'});
+    GS.log.push({msg:GS.names[GS.cur]+' goes first (highest roll).',type:'hi'});
+    // Claim our colour (by seat index) and push initial GS to Firebase
+    if(typeof window.mpClaimHumanColors==='function') window.mpClaimHumanColors();
+    if(typeof mpPushState==='function') setTimeout(mpPushState,150);
+    renderUI();if(GS.cpu[GS.cur])setTimeout(cpuGo,800);
+  },600);
+}
+
+function doReset(){
+  GS=null;resetDice();
+  document.getElementById('ws').classList.remove('show');
+  document.getElementById('ov-draft').classList.add('hidden');
+  document.getElementById('ov-pick').classList.add('hidden');
+  document.getElementById('ov-names').classList.remove('hidden');
+  CFG={names:['Sailor 1','Sailor 2','Sailor 3','Sailor 4'],cpu:[false,false,true,true],seatColor:['green','red','blue','yellow']};
+  window._draftUIBuilt=false; window._pickUIBuilt=false;
+  // Clear any saved MP session so fresh game starts clean
+  try{ sessionStorage.removeItem('mpSession'); }catch(e){}
+  // Reset MP state
+  window.mpRoomCode=null; window.mpMyColor=null; window.mpMySeat=null; window.mpIsHost=false;
+  
+  buildNamesUI();
+  const svg=document.getElementById('svg');
+  if(svg){const defs=mk('defs',{});svg.innerHTML='';svg.appendChild(defs);
+    const wg=mk('linearGradient',{id:'woodBg',x1:'0%',y1:'0%',x2:'100%',y2:'100%'});
+    wg.innerHTML=`<stop offset="0%" stop-color="#8a6525"/><stop offset="40%" stop-color="#7a5520"/><stop offset="100%" stop-color="#6a4515"/>`;
+    defs.appendChild(wg);
+    svg.appendChild(mk('rect',{x:0,y:0,width:SZ,height:SZ,fill:'url(#woodBg)',rx:3}));
+    const t=mk('text',{x:SZ/2,y:SZ/2+7,'text-anchor':'middle',fill:'#0d1b2acc','font-size':'16','font-family':'Georgia,serif'});
+    t.textContent='Start a game to play';svg.appendChild(t);}
+  document.getElementById('gl').innerHTML='';
+}
+
+buildNamesUI();doReset();
+</script>
+
+<!-- ═══ MULTIPLAYER ROOM PANEL ═══ -->
+<div id="mp-panel" style="position:fixed;top:10px;right:10px;z-index:9999;background:#0d1b2a;border:1px solid #c8a035;padding:10px;border-radius:6px;font-family:monospace;font-size:.7rem;color:#e8dcc0;min-width:150px;max-width:200px;">
+  <div style="font-size:.6rem;letter-spacing:.15em;color:#c8a035;text-transform:uppercase;margin-bottom:6px;">Multiplayer</div>
+  <div id="roomStatus" style="margin-bottom:6px;color:#aaa;">Loading...</div>
+  <div style="display:flex;gap:4px;margin-bottom:6px;">
+    <button id="btnHost" onclick="window.createRoom&&createRoom()" style="flex:1;background:#1a2e45;border:1px solid #c8a035;color:#e8c060;padding:4px 2px;border-radius:3px;font-family:monospace;font-size:.6rem;cursor:pointer;">Host</button>
+    <button id="btnJoin" onclick="window.joinRoom&&joinRoom()" style="flex:1;background:#1a2e45;border:1px solid #6a5010;color:#e8dcc0;padding:4px 2px;border-radius:3px;font-family:monospace;font-size:.6rem;cursor:pointer;">Join</button>
+  </div>
+  <div id="roomCodeDisplay" style="color:#e8c060;font-size:.65rem;"></div>
+  <div id="mpPlayerList" style="font-size:.55rem;color:#666;margin-top:2px;"></div>
+  <!-- Debug panel -->
+  <div style="margin-top:6px;">
+    <button onclick="if(typeof doReset==='function')doReset()" style="width:100%;background:#1a0a0a;border:1px solid #622;color:#c88;padding:3px;border-radius:3px;font-family:monospace;font-size:.55rem;cursor:pointer;">✕ Leave / New Game</button>
+  </div>
+  <div id="mp-debug-toggle" onclick="document.getElementById('mp-debug').style.display=document.getElementById('mp-debug').style.display==='none'?'block':'none'" style="margin-top:6px;color:#446;font-size:.55rem;cursor:pointer;">▶ debug</div>
+  <div id="mp-debug" style="display:none;margin-top:4px;border-top:1px solid #224;padding-top:4px;max-height:200px;overflow-y:auto;">
+    <div id="mp-debug-log" style="font-size:.5rem;color:#6a9;word-break:break-all;"></div>
+  </div>
+</div>
+
+<!-- ═══ FIREBASE MULTIPLAYER ═══ -->
+<script>
+// Debug logger — always available regardless of Firebase load state
+window.mpLog = function(msg, type){
+  const el = document.getElementById('mp-debug-log');
+  if(!el) return;
+  const line = document.createElement('div');
+  line.style.color = type==='err'?'#f66':type==='ok'?'#6f6':'#6a9';
+  line.textContent = new Date().toTimeString().slice(0,8)+' '+msg;
+  el.prepend(line);
+  if(el.children.length > 40) el.removeChild(el.lastChild);
+  console.log('[MP]', msg);
+};
+
+// Safe stubs — replaced once Firebase loads
+window.createRoom = function(){ window.mpLog('Firebase not ready yet','err'); };
+window.joinRoom   = function(){ window.mpLog('Firebase not ready yet','err'); };
+window.mpPushState  = function(){};
+window.mpPushDraft  = function(){};
+window.mpPushLobby  = function(){};
+window.mpIsMyTurn   = function(){ return true; };
+window.mpClaimColors = function(){};
+window.mpSetMyColor  = function(){};
+window.mpClaimHumanColors = function(){};
+
+window.mpLog('Script tag loaded');
+
+// Firebase init — defined here, called by database CDN onload
+window._fbDbReady = function(){
+  try {
+    window.mpLog('Initialising Firebase...');
+    const firebaseConfig = {
+      apiKey:"AIzaSyDP5F3eGCy_v666Nc8B2GltThEzPKRg8yg",
+      authDomain:"uckers-dd438.firebaseapp.com",
+      databaseURL:"https://uckers-dd438-default-rtdb.firebaseio.com",
+      projectId:"uckers-dd438",
+      storageBucket:"uckers-dd438.firebasestorage.app",
+      messagingSenderId:"153960798837",
+      appId:"1:153960798837:web:7e530c006652375438363c"
+    };
+    const app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(firebaseConfig);
+    const db  = firebase.database();
+    window.mpDb = db; // expose for main script access
+    window.mpLog('Firebase ready','ok');
+    document.getElementById('roomStatus').textContent = 'Offline';
+
+    // ── Stable player ID ──
+    function getStableId(){
+      try {
+        let id = localStorage.getItem('mpStableId');
+        if(!id){ id=Math.random().toString(36).substring(2,10); localStorage.setItem('mpStableId',id); }
+        return id;
+      } catch(e){ return Math.random().toString(36).substring(2,10); }
+    }
+
+    window.mpRoomCode  = null;
+    window.mpPlayerId  = getStableId();
+    window.mpMySeat    = null;
+    window.mpMyColor   = null;
+    window.mpIsHost    = false;
+    window._mpApplying = false;
+    window._draftSessionId = null;
+    window._draftUIBuilt   = false;
+    window._pickUIBuilt    = false;
+
+    window.mpLog('Player ID: '+window.mpPlayerId.slice(0,6)+'...');
+
+    function makeCode(){ return Math.random().toString(36).substring(2,6).toUpperCase(); }
+    function setStatus(m){ const e=document.getElementById('roomStatus'); if(e)e.textContent=m; }
+    function setCode(m)  { const e=document.getElementById('roomCodeDisplay'); if(e)e.textContent=m; }
+    function setPlayers(n){ const e=document.getElementById('mpPlayerList'); if(e)e.textContent=n+' player(s)'; }
+
+    // ── Turn check ──
+    window.mpIsMyTurn = function(){
+      if(!window.mpRoomCode) return true;
+      if(!window.GS) return false;
+      if(window.mpMyColor===null) return false;
+      return window.GS.cur === window.mpMyColor;
+    };
+
+    // ── Push GS ──
+    window.mpPushState = function(){
+      if(!window.mpRoomCode||!window.GS) return;
+      if(window._mpApplying) return;
+      try {
+        db.ref('rooms/'+window.mpRoomCode+'/gameState')
+          .set(JSON.parse(JSON.stringify(window.GS)))
+          .catch(e=>window.mpLog('pushState err: '+e,'err'));
+        window.mpLog('pushed GS (cur='+window.GS.cur+')');
+      } catch(e){ window.mpLog('pushState ex: '+e,'err'); }
+    };
+
+    // ── Push DRAFT ──
+    window.mpPushDraft = function(){
+      if(!window.mpRoomCode) return;
+      try {
+        db.ref('rooms/'+window.mpRoomCode+'/draft').set({
+          rolls:DRAFT.rolls, order:DRAFT.order, pickQueue:DRAFT.pickQueue,
+          picked:DRAFT.picked, available:DRAFT.available, _shuffled:DRAFT._shuffled,
+          phase:window._mpDraftPhase||'roll'
+        }).catch(e=>window.mpLog('pushDraft err: '+e,'err'));
+      } catch(e){ window.mpLog('pushDraft ex: '+e,'err'); }
+    };
+
+    // ── Push Lobby ──
+    window.mpPushLobby = function(){
+      if(!window.mpRoomCode||!window.mpIsHost||typeof CFG==='undefined') return;
+      db.ref('rooms/'+window.mpRoomCode+'/lobby')
+        .set({names:CFG.names, cpu:CFG.cpu})
+        .catch(e=>window.mpLog('pushLobby err: '+e,'err'));
+    };
+
+    // ── Apply remote GS ──
+    function applyRemoteGS(remote){
+      window._mpApplying = true;
+      window.GS = remote;
+      ['ov-names','ov-draft','ov-pick'].forEach(id=>{
+        const el=document.getElementById(id); if(el) el.classList.add('hidden');
+      });
+      if(typeof renderUI==='function') renderUI();
+      window._mpApplying = false;
+      if(window.mpIsHost && window.GS.cpu && window.GS.cpu[window.GS.cur]){
+        if(typeof cpuGo==='function') setTimeout(cpuGo,650);
+      }
+      window.mpLog('applied remote GS cur='+remote.cur);
+    }
+
+    // ── Subscribe GS ──
+    function subscribeGS(){
+      db.ref('rooms/'+window.mpRoomCode+'/gameState').on('value',function(snap){
+        if(!snap.exists()) return;
+        if(window._mpApplying) return;
+        const remote=snap.val(); if(!remote) return;
+        if(window.mpMyColor && window.GS && window.GS.cur===window.mpMyColor) return;
+        applyRemoteGS(remote);
+      });
+    }
+
+    // ── Subscribe Draft ──
+    function subscribeDraft(){
+      db.ref('rooms/'+window.mpRoomCode+'/draft').on('value',function(snap){
+        if(!snap.exists()) return;
+        if(window.mpIsHost) return;
+        const d=snap.val(); if(!d) return;
+        // Reconstruct rolls array from stored object (r0..r3 keys, 0=not yet rolled)
+        const rawRolls = d.rolls||{};
+        if(typeof rawRolls === 'object' && 'r0' in rawRolls){
+          DRAFT.rolls = [0,1,2,3].map(i => {
+            const v = rawRolls['r'+i];
+            return (v==null||v===0) ? null : v;
+          });
+        } else {
+          // Legacy format or plain array
+          DRAFT.rolls = [0,1,2,3].map(i => {
+            const v = Array.isArray(rawRolls) ? rawRolls[i] : rawRolls[i];
+            return (v==null) ? null : v;
+          });
+        }
+        DRAFT.order=d.order||[];
+        DRAFT.pickQueue=d.pickQueue||[];
+        DRAFT.picked=d.picked||[];
+        DRAFT.available=d.available||['green','red','blue','yellow'];
+        DRAFT._shuffled=d._shuffled||[];
+        const phase=d.phase||'roll';
+        window._mpDraftPhase=phase;
+        if(phase==='roll'){
+          const ovN=document.getElementById('ov-names');
+          const ovD=document.getElementById('ov-draft');
+          const ovP=document.getElementById('ov-pick');
+          if(ovN) ovN.classList.add('hidden');
+          if(ovP) ovP.classList.add('hidden');
+          if(ovD) ovD.classList.remove('hidden');
+          if(!window._draftUIBuilt){
+            window._draftUIBuilt=true;
+            window.mpLog('building draft UI, mpMySeat='+window.mpMySeat+' mpIsHost='+window.mpIsHost);
+            // Ensure CFG.cpu is correct for this device before building UI
+            if(window.mpMySeat!==null && typeof CFG!=='undefined'){
+              CFG.cpu=[true,true,true,true];
+              CFG.cpu[window.mpMySeat]=false;
+              window.mpLog('CFG.cpu set: '+JSON.stringify(CFG.cpu));
+            } else {
+              window.mpLog('mpMySeat is null — cannot set CFG.cpu correctly!','err');
+            }
+            if(typeof buildDraftUI==='function') buildDraftUI();
+          }
+          DRAFT.rolls.forEach((v,seat)=>{
+            if(v===null) return;
+            for(let i=0;i<9;i++){const e=document.getElementById('ddd'+seat+'p'+i);if(e)e.className='dp'+(PIPS[v].includes(i)?' on':'');}
+            const r=document.getElementById('dpr'+seat); if(r) r.textContent='Rolled: '+v;
+            const c=document.getElementById('dp'+seat);  if(c) c.classList.add('rolling');
+            const b=document.getElementById('dpbtn'+seat); if(b) b.disabled=true;
+          });
+          if(DRAFT.order.length){
+            const btn=document.getElementById('draft-proceed'); if(btn) btn.style.display='block';
+            const st=document.getElementById('draft-status');
+            if(st) st.textContent='Pick order: '+DRAFT.order.map(s=>CFG.names[s]+'('+DRAFT.rolls[s]+')').join(' → ');
+          }
+        } else if(phase==='pick'){
+          const ovD=document.getElementById('ov-draft');
+          const ovP=document.getElementById('ov-pick');
+          if(ovD) ovD.classList.add('hidden');
+          if(ovP) ovP.classList.remove('hidden');
+          if(!window._pickUIBuilt){ window._pickUIBuilt=true; if(typeof buildPickUI==='function') buildPickUI(); }
+          DRAFT.picked.forEach(({seat,color})=>{
+            const pi=DRAFT._shuffled.indexOf(color); if(pi<0) return;
+            const el=document.getElementById('piece'+pi); if(!el) return;
+            el.style.background=HEX[color]; el.style.borderColor=LITE[color];
+            el.classList.remove('face-down'); el.classList.add('revealed'); el.onclick=null;
+            el.innerHTML='<span style="font-size:.65rem;color:'+LITE[color]+';">'+color.toUpperCase()+'</span>';
+          });
+          if(DRAFT.pickQueue.length){
+            const seat=DRAFT.pickQueue[0];
+            const canPick=(window.mpMySeat===seat);
+            const instr=document.getElementById('pick-instr');
+            if(instr) instr.textContent=(canPick?'Your turn to pick!':CFG.names[seat]+' is picking...');
+          }
+          const st=document.getElementById('pick-status'); if(st) st.textContent=DRAFT.picked.length+' of 4 picked.';
+        }
+        window.mpLog('subscribeDraft phase='+phase);
+      });
+    }
+
+    // ── Watch Draft Rolls ──
+    function watchDraftRolls(){
+      db.ref('rooms/'+window.mpRoomCode+'/draftRolls').on('value',function(snap){
+        if(!snap.exists()) return;
+        const rolls=snap.val();
+        const remoteSid=rolls._sid;
+        if(remoteSid && window._draftSessionId && remoteSid!==window._draftSessionId) return;
+        let changed=false;
+        Object.entries(rolls).forEach(([seatStr,v])=>{
+          if(seatStr==='_sid') return;
+          const seat=parseInt(seatStr);
+          if(!DRAFT||!DRAFT.rolls) return;
+        // Ensure DRAFT.rolls has no undefined entries
+        for(let i=0;i<4;i++) if(DRAFT.rolls[i]==null) DRAFT.rolls[i]=null;
+          if(DRAFT.rolls[seat]!==null||typeof v!=='number') return;
+          DRAFT.rolls[seat]=v;
+          if(typeof PIPS!=='undefined'){
+            for(let i=0;i<9;i++){const e=document.getElementById('ddd'+seat+'p'+i);if(e)e.className='dp'+(PIPS[v].includes(i)?' on':'');}
+          }
+          const r=document.getElementById('dpr'+seat); if(r) r.textContent='Rolled: '+v;
+          const c=document.getElementById('dp'+seat);  if(c) c.classList.add('rolling');
+          const b=document.getElementById('dpbtn'+seat); if(b) b.disabled=true;
+          changed=true;
+          window.mpLog('roll seat'+seat+'='+v);
+        });
+        if(changed && typeof checkDraftComplete==='function') checkDraftComplete();
+      });
+    }
+
+    // ── Watch individual colour picks (client picks reach host) ──
+    function watchDraftPicks(){
+      window.mpDb.ref('rooms/'+window.mpRoomCode+'/draftPicks').on('value',function(snap){
+        if(!snap.exists()) return;
+        const picks = snap.val();
+        Object.entries(picks).forEach(([seatStr, color])=>{
+          const seat = parseInt(seatStr);
+          if(isNaN(seat)||!color) return;
+          // Check if this pick is already applied
+          if(DRAFT.picked.some(p=>p.seat===seat)) return;
+          if(!DRAFT.available.includes(color)) return;
+          window.mpLog('watchDraftPicks: seat'+seat+'='+color);
+          // Apply the pick locally
+          DRAFT.available = DRAFT.available.filter(c=>c!==color);
+          DRAFT.picked.push({seat, color});
+          DRAFT.pickQueue = DRAFT.pickQueue.filter(s=>s!==seat);
+          // Update UI
+          const pi = DRAFT._shuffled.indexOf(color);
+          if(pi>=0){
+            const el = document.getElementById('piece'+pi);
+            if(el){
+              el.style.background=HEX[color]; el.style.borderColor=LITE[color];
+              el.classList.remove('face-down'); el.classList.add('revealed'); el.onclick=null;
+              el.innerHTML='<span style="font-size:.65rem;color:'+LITE[color]+';">'+color.toUpperCase()+'</span>';
+            }
+          }
+          const st = document.getElementById('pick-status');
+          if(st) st.textContent=CFG.names[seat]+' got '+color.toUpperCase()+'! '+DRAFT.picked.length+' of 4 picked.';
+        });
+        // After applying all known picks, advance to next pick or finalise
+        if(DRAFT.picked.length===4){
+          if(window.mpIsHost) finaliseDraft();
+        } else if(window.mpIsHost){
+          // Rebuild pick queue from draft order minus already picked
+          DRAFT.pickQueue = DRAFT.order.filter(s=>!DRAFT.picked.some(p=>p.seat===s));
+          advancePick();
+        }
+      });
+    }
+
+    // ── Subscribe Lobby ──
+    function subscribeLobby(){
+      db.ref('rooms/'+window.mpRoomCode+'/lobby').on('value',function(snap){
+        if(!snap.exists()||window.mpIsHost) return;
+        const lobby=snap.val(); if(!lobby) return;
+        if(typeof CFG!=='undefined'){ CFG.names=lobby.names; CFG.cpu=lobby.cpu; }
+        if(typeof buildNamesUI==='function') buildNamesUI();
+        window.mpLog('lobby updated');
+      });
+    }
+
+    // ── Watch Players ──
+    function watchPlayers(){
+      db.ref('rooms/'+window.mpRoomCode+'/players').on('value',function(snap){
+        if(!snap.exists()) return;
+        const players=snap.val();
+        const entries=Object.values(players);
+        const n=entries.length;
+        setPlayers(n);
+        window.mpLog('players: '+n);
+        if(window.mpIsHost && typeof CFG!=='undefined'){
+          CFG.cpu=[false, n>=2?false:true, n>=3?false:true, n>=4?false:true];
+          entries.forEach(p=>{ if(typeof p.seat==='number'&&p.name){ CFG.names[p.seat]=p.name; const inp=document.getElementById('sn'+p.seat); if(inp)inp.value=p.name; } });
+          if(typeof buildNamesUI==='function') buildNamesUI();
+          window.mpPushLobby();
+        }
+      });
+    }
+
+    // ── Claim colours ──
+    window.mpClaimColors = function(colorsArr){
+      window.mpMyColor = colorsArr[0]||null;
+      if(!window.mpRoomCode) return;
+      const upd={};
+      colorsArr.forEach(c=>{upd[c]=window.mpPlayerId;});
+      db.ref('rooms/'+window.mpRoomCode+'/seats').update(upd).catch(()=>{});
+      const role=window.mpIsHost?'🟢 Hosting':'🔵 Connected';
+      setStatus(role+' · '+(window.mpMyColor||''));
+      window.mpLog('claimed color: '+window.mpMyColor);
+    };
+    window.mpSetMyColor = function(color){ window.mpClaimColors([color]); };
+    window.mpClaimHumanColors = function(){
+      if(!window.GS||window.mpMySeat===null) return;
+      const color=CFG.seatColor[window.mpMySeat];
+      if(color) window.mpClaimColors([color]);
+    };
+
+    // ── Block UI when not our turn ──
+    window.addEventListener('load',function(){
+      const _tCPU=window.togCPU;
+      if(_tCPU) window.togCPU=function(i,btn){ _tCPU(i,btn); if(window.mpIsHost&&window.mpRoomCode) window.mpPushLobby(); };
+      document.addEventListener('input',function(e){
+        if(e.target&&e.target.classList.contains('ni')&&window.mpIsHost&&window.mpRoomCode) window.mpPushLobby();
+      });
+      function gate(name){
+        const orig=window[name]; if(!orig) return;
+        window[name]=function(...args){ if(!window.mpIsMyTurn()) return; return orig.apply(this,args); };
+      }
+      gate('onRoll'); gate('onTok'); gate('onDestClickDv'); gate('onDestClick');
+      window.mpLog('gates applied');
+    });
+
+    // ── HOST ──
+    window.createRoom = function(){
+      window.mpLog('createRoom called');
+      const myName=(prompt('Enter your name:')||'').trim()||'Sailor';
+      window.mpMyName=myName;
+      window.mpRoomCode=makeCode();
+      window.mpIsHost=true;
+      window.mpMySeat=0;
+      if(typeof CFG!=='undefined'){ CFG.names[0]=myName; }
+      if(typeof buildNamesUI==='function') buildNamesUI();
+      const inp=document.getElementById('sn0'); if(inp) inp.value=myName;
+      window.mpLog('hosting as '+myName+' room='+window.mpRoomCode);
+      db.ref('rooms/'+window.mpRoomCode).set({
+        host:window.mpPlayerId, created:Date.now(),
+        players:{[window.mpPlayerId]:{joined:Date.now(),seat:0,name:myName}}
+      }).then(()=>window.mpLog('room created in FB','ok'))
+        .catch(e=>window.mpLog('createRoom FB err: '+e,'err'));
+      setStatus('🟢 '+myName); setCode('Code: '+window.mpRoomCode);
+      // Persist session so refresh can restore
+      try{ sessionStorage.setItem('mpSession', JSON.stringify({
+        roomCode:window.mpRoomCode, playerId:window.mpPlayerId,
+        isHost:true, mySeat:0, myName:myName
+      })); }catch(e){}
+      subscribeGS(); subscribeDraft(); watchDraftRolls(); watchDraftPicks(); subscribeLobby(); watchPlayers();
+      window.mpPushLobby();
+    };
+
+    // ── JOIN ──
+    window.joinRoom = function(){
+      window.mpLog('joinRoom called');
+      const code=prompt('Enter Room Code:'); if(!code) return;
+      const upper=code.trim().toUpperCase();
+      window.mpLog('joining room: '+upper);
+      db.ref('rooms/'+upper).once('value',function(snap){
+        if(!snap.exists()){ alert('Room not found'); window.mpLog('room not found','err'); return; }
+        const myName=(prompt('Enter your name:')||'').trim()||'Sailor';
+        window.mpMyName=myName;
+        window.mpRoomCode=upper;
+        window.mpIsHost=false;
+        db.ref('rooms/'+upper+'/players').once('value',function(psnap){
+          const existing=psnap.exists()?psnap.val():{};
+          const takenSeats=Object.entries(existing)
+            .filter(([pid])=>pid!==window.mpPlayerId)
+            .map(([,p])=>p.seat).filter(s=>typeof s==='number');
+          let seat=0; while(takenSeats.includes(seat)) seat++;
+          window.mpMySeat=seat;
+          window.mpLog('joining as '+myName+' seat='+seat);
+          db.ref('rooms/'+upper+'/players/'+window.mpPlayerId)
+            .set({joined:Date.now(),seat,name:myName})
+            .then(()=>window.mpLog('player record written','ok'))
+            .catch(e=>window.mpLog('join write err: '+e,'err'));
+          if(typeof CFG!=='undefined'){ CFG.names[seat]=myName; const inp=document.getElementById('sn'+seat); if(inp)inp.value=myName; }
+          setStatus('🔵 '+myName); setCode('Code: '+upper);
+          // Persist session so refresh can restore
+          try{ sessionStorage.setItem('mpSession', JSON.stringify({
+            roomCode:upper, playerId:window.mpPlayerId,
+            isHost:false, mySeat:seat, myName:myName
+          })); }catch(e){}
+          subscribeGS(); subscribeDraft(); watchDraftRolls(); watchDraftPicks(); subscribeLobby(); watchPlayers();
+        });
+      });
+    };
+
+    window.mpLog('All MP functions ready','ok');
+
+    // ── Restore session after refresh ──
+    try {
+      const saved = sessionStorage.getItem('mpSession');
+      if(saved){
+        const s = JSON.parse(saved);
+        window.mpLog('Found saved session, verifying room '+s.roomCode+'...');
+        // Verify room still exists in Firebase before restoring
+        db.ref('rooms/'+s.roomCode).once('value', function(snap){
+          if(!snap.exists()){
+            window.mpLog('Saved room gone — clearing session','err');
+            try{ sessionStorage.removeItem('mpSession'); }catch(e){}
+            return;
+          }
+          window.mpLog('Restoring session: room='+s.roomCode+' seat='+s.mySeat);
+          window.mpRoomCode = s.roomCode;
+          window.mpIsHost   = s.isHost;
+          window.mpMySeat   = s.mySeat;
+          window.mpMyName   = s.myName;
+          db.ref('rooms/'+s.roomCode+'/players/'+window.mpPlayerId)
+            .update({joined:Date.now(), seat:s.mySeat, name:s.myName})
+            .catch(e=>window.mpLog('restore player err: '+e,'err'));
+          setStatus((s.isHost?'🟢':'🔵')+' '+s.myName+' (restored)');
+          setCode('Code: '+s.roomCode);
+          subscribeGS(); subscribeDraft(); watchDraftRolls(); watchDraftPicks(); subscribeLobby(); watchPlayers();
+          if(s.isHost) window.mpPushLobby();
+        });
+      }
+    } catch(e){ window.mpLog('session restore err: '+e,'err'); }
+
+  } catch(e){
+    window.mpLog('FIREBASE INIT ERROR: '+e,'err');
+    document.getElementById('roomStatus').textContent='Error: '+e.message;
+  }
+};
+
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"
+  onload="window.mpLog('firebase-app loaded','ok')"
+  onerror="window.mpLog('firebase-app FAILED TO LOAD','err');document.getElementById('roomStatus').textContent='No internet';">
+</script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"
+  onload="window.mpLog('firebase-db loaded — init now','ok');window._fbDbReady&&window._fbDbReady();"
+  onerror="window.mpLog('firebase-db FAILED TO LOAD','err');">
+</script>
+
+
+</body>
+</html>
